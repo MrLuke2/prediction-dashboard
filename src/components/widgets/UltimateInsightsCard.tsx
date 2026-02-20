@@ -32,7 +32,7 @@ const KALSHI_LOGO = (
     </svg>
 );
 
-const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market, onClose }) => {
+const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market, onClose }: UltimateInsightsCardProps) => {
   const [activeTab, setActiveTab] = useState<TabType>('OVERVIEW');
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [size, setSize] = useState<string>('100');
@@ -156,19 +156,19 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Latest Alpha Metric</h3>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase ${
-                    alphaMetric.trend === 'increasing' ? 'text-kalshi-green bg-kalshi-green/10' :
-                    alphaMetric.trend === 'decreasing' ? 'text-kalshi-red bg-kalshi-red/10' : 'text-zinc-500 bg-zinc-500/10'
+                    alphaMetric?.trend === 'increasing' ? 'text-kalshi-green bg-kalshi-green/10' :
+                    alphaMetric?.trend === 'decreasing' ? 'text-kalshi-red bg-kalshi-red/10' : 'text-zinc-500 bg-zinc-500/10'
                 }`}>
-                    {alphaMetric.trend}
+                    {alphaMetric?.trend ?? 'stable'}
                 </span>
             </div>
             
-            <div className="flex items-end justify-between">
-                <div className="text-5xl font-mono font-black text-white">{alphaMetric.probability}%</div>
+             <div className="flex items-end justify-between">
+                <div className="text-5xl font-mono font-black text-white">{alphaMetric?.probability ?? 0}%</div>
                 <div className="flex-1 max-w-[200px] h-2 bg-zinc-800 rounded-full overflow-hidden ml-4 mb-2">
                     <div 
                         className="h-full bg-gradient-to-r from-poly-blue to-purple-500" 
-                        style={{ width: `${alphaMetric.probability}%` }}
+                        style={{ width: `${alphaMetric?.probability ?? 0}%` }}
                     />
                 </div>
             </div>

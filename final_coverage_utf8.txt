@@ -1,0 +1,294 @@
+﻿
+> agent-predict-war-room@0.1.0 test:coverage
+> vitest run --coverage
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/mrnlu/repos/agent-predict-war-room-backend-research-docs[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [31mΓ¥»[39m src/lib/__tests__/__tests/errorReporting.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31mΓ¥»[39m src/test/unit/marketStore.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 33[2mms[22m[39m
+     [32mΓ£ô[39m should update alpha metric[32m 8[2mms[22m[39m
+[31m     [31m├ù[31m should update market data for a specific symbol[39m[32m 17[2mms[22m[39m
+[31m     [31m├ù[31m should handle multiple updates correctly[39m[32m 2[2mms[22m[39m
+     [32mΓ£ô[39m setWhaleData replaces array[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/test/unit/stores.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+node.exe : [90mstderr[2m | 
+src/test/unit/utils.test.tsx[2m > 
+[22m[2mUtility Functions[2m > 
+[22m[2mPerformance Monitoring[2m > 
+[22m[2mshould wrap component with 
+measureRender
+At C:\Program Files\nodejs\npm.ps1:29 
+char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: ([90mstderr[2m...h measureRender  
+  :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+[22m[39m[Perf] SLOW RENDER: 
+<TestComponent /> took 28.55ms
+
+ [32mΓ£ô[39m src/test/unit/utils.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 272[2mms[22m[39m
+[90mstderr[2m | src/test/integration/alp
+haGauge.test.tsx[2m > 
+[22m[2mAlphaGauge Integration[2m > 
+[22m[2mshows skeleton when alphaMetric 
+is null
+[22m[39m[Perf] SLOW RENDER: <AlphaGauge 
+/> took 46.85ms
+
+[90mstderr[2m | src/test/integration/alp
+haGauge.test.tsx[2m > 
+[22m[2mAlphaGauge Integration[2m > 
+[22m[2mshows value and regime label 
+when data is present
+[22m[39m[Perf] SLOW RENDER: <AlphaGauge 
+/> took 78.47ms
+
+ [32mΓ£ô[39m src/test/integration/notifications.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 654[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m renders a toast when addToast is called [33m 305[2mms[22m[39m
+ [32mΓ£ô[39m src/test/integration/alphaGauge.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 366[2mms[22m[39m
+ [32mΓ£ô[39m src/test/unit/aiProvider.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 413[2mms[22m[39m
+ [32mΓ£ô[39m src/components/layout/Header/__tests__/MarketSearchBasic.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 157[2mms[22m[39m
+ [32mΓ£ô[39m src/test/integration/widgetSwap.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 1045[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m restores DEFAULT_LAYOUT when clicking reset [33m 1029[2mms[22m[39m
+ [32mΓ£ô[39m src/test/integration/aiProviderSelector.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 3559[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m opens panel and shows all 3 providers [33m 895[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m updates store and fires toast when selecting Gemini [33m 799[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m allows model selection per provider [33m 1077[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m persists selection to localStorage [33m 557[2mms[22m[39m
+ [32mΓ£ô[39m src/test/integration/auth.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 6641[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m renders login tab by default [33m 314[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m calls authApi.login and updates store on success [33m 2998[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m shows error message on 401/failure [33m 1701[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m renders password strength bar on register tab [33m 1487[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/utils.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+[90mstdout[2m | src/test/unit/tradeStore.test.ts[2m > [22m[2mTrade Store[2m > [22m[2msubmitTrade updates pendingTrade state
+[22m[39m[Store] Submitting trade: { symbol: [32m'BTC/USD'[39m, amount: [33m1[39m, side: [32m'buy'[39m }
+
+ [32mΓ£ô[39m src/test/unit/tradeStore.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32mΓ£ô[39m src/services/websocket/__tests__/protocol.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mΓ£ô[39m src/store/__tests__/useUIStore.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+[90mstdout[2m | src/test/unit/websocket.test.ts[2m > [22m[2mWebSocketClient[2m > [22m[2mshould transition to connected state on open
+[22m[39m[WS] Connected
+
+[90mstdout[2m | src/test/unit/websocket.test.ts[2m > [22m[2mWebSocketClient[2m > [22m[2mshould send PING every 30s
+[22m[39m[WS] Connected
+
+[90mstdout[2m | src/test/unit/websocket.test.ts[2m > [22m[2mWebSocketClient[2m > [22m[2mshould disconnect on pong timeout
+[22m[39m[WS] Connected
+[WS] Closed
+[WS] Reconnecting in 1000ms (attempt 1)
+[WS] Reconnecting in 1000ms (attempt 1)
+
+[90mstderr[2m | 
+src/test/unit/websocket.test.ts[2m > 
+[22m[2mWebSocketClient[2m > 
+[22m[2mshould disconnect on pong timeout
+[22m[39m[WS] Pong timeout, 
+disconnecting...
+
+[90mstdout[2m | src/test/unit/websocket.test.ts[2m > [22m[2mWebSocketClient[2m > [22m[2mshould not throw on malformed message
+[22m[39m[WS] Connected
+
+[90mstderr[2m | 
+src/test/unit/websocket.test.ts[2m > 
+[22m[2mWebSocketClient[2m > 
+[22m[2mshould not throw on malformed 
+message
+[22m[39m[WS] Message parsing error: 
+SyntaxError: Unexpected token 'i', 
+"invalid-json" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at WebSocketClient.handleMessage (C:/U
+sers/mrnlu/repos/agent-predict-war-room-ba
+ckend-research-docs/src/services/websocket
+/WebSocketClient.ts:101:39)
+    at C:/Users/mrnlu/repos/agent-predict-
+war-room-backend-research-docs/src/test/un
+it/websocket.test.ts:87:38
+    at Proxy.assertThrows [90m(file:///C:
+/Users/mrnlu/repos/agent-predict-war-room-
+backend-research-docs/[39mnode_modules/[
+4mchai[24m/index.js:2798:5[90m)[39m
+    at Proxy.methodWrapper [90m(file:///C
+:/Users/mrnlu/repos/agent-predict-war-room
+-backend-research-docs/[39mnode_modules/
+[4mchai[24m/index.js:1700:25[90m)[39m
+    at Proxy.<anonymous> [90m(file:///C:/
+Users/mrnlu/repos/agent-predict-war-room-b
+ackend-research-docs/[39mnode_modules/[4
+m@vitest[24m/expect/dist/index.js:1149:12
+[90m)[39m
+    at Proxy.overwritingMethodWrapper [90
+m(file:///C:/Users/mrnlu/repos/agent-predi
+ct-war-room-backend-research-docs/[39mnod
+e_modules/[4mchai[24m/index.js:1750:33[
+90m)[39m
+    at Proxy.<anonymous> [90m(file:///C:/
+Users/mrnlu/repos/agent-predict-war-room-b
+ackend-research-docs/[39mnode_modules/[4
+m@vitest[24m/expect/dist/index.js:1485:16
+[90m)[39m
+    at Proxy.<anonymous> [90m(file:///C:/
+Users/mrnlu/repos/agent-predict-war-room-b
+ackend-research-docs/[39mnode_modules/[4
+m@vitest[24m/expect/dist/index.js:1090:14
+[90m)[39m
+    at Proxy.methodWrapper [90m(file:///C
+:/Users/mrnlu/repos/agent-predict-war-room
+-backend-research-docs/[39mnode_modules/
+[4mchai[24m/index.js:1700:25[90m)[39m
+
+[90mstdout[2m | src/test/unit/websocket.test.ts[2m > [22m[2mWebSocketClient[2m > [22m[2mshould queue and flush messages
+[22m[39m[WS] Connected
+
+[90mstdout[2m | src/test/unit/websocket.test.ts[2m > [22m[2mWebSocketClient[2m > [22m[2mshould reconnect after close
+[22m[39m[WS] Connected
+[WS] Closed
+[WS] Reconnecting in 1000ms (attempt 1)
+
+ [32mΓ£ô[39m src/test/unit/websocket.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32mΓ£ô[39m src/store/__tests__/market_trade.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32mΓ£ô[39m src/store/__tests__/useLayoutStore.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mΓ£ô[39m src/components/widgets/__tests__/registry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [2m[90mΓåô[39m[22m src/components/layout/Header/__tests__/MarketSearch.test.tsx [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m[1m[41m 
+Failed Suites 1 
+[49m[22m[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[41m[1m FAIL [22m[49m src/lib/__tests_
+_/__tests/errorReporting.test.ts[2m [ src
+/lib/__tests__/__tests/errorReporting.test
+.ts ][22m
+[31m[1mError[22m: Failed to resolve 
+import "../errorReporting" from "src/lib/_
+_tests__/__tests/errorReporting.test.ts". 
+Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/mrnlu/repos/agent-pr
+edict-war-room-backend-research-docs/src/l
+ib/__tests__/__tests/errorReporting.test.t
+s[39m:2:28
+[33m  1  |  import { describe, it, 
+expect, vi } from "vitest";
+  2  |  import { reportError } from 
+"../errorReporting";
+     |                               ^
+  3  |  describe("Error Reporting", () => 
+{
+  4  |    it("should log error message to 
+console.info", () => {[39m
+[90m [2mΓ¥»[22m 
+TransformPluginContext._formatLog node_mod
+ules/vite/dist/node/chunks/dep-D4NMHUTW.js
+:[2m42528:41[22m[39m
+[90m [2mΓ¥»[22m 
+TransformPluginContext.error node_modules/
+vite/dist/node/chunks/dep-D4NMHUTW.js:[2m
+42525:16[22m[39m
+[90m [2mΓ¥»[22m normalizeUrl node_modul
+es/vite/dist/node/chunks/dep-D4NMHUTW.js:
+[2m40504:23[22m[39m
+[90m [2mΓ¥»[22m node_modules/vite/dist/
+node/chunks/dep-D4NMHUTW.js:[2m40623:37[
+22m[39m
+[90m [2mΓ¥»[22m 
+TransformPluginContext.transform node_modu
+les/vite/dist/node/chunks/dep-D4NMHUTW.js:
+[2m40550:7[22m[39m
+[90m [2mΓ¥»[22m 
+EnvironmentPluginContainer.transform node_
+modules/vite/dist/node/chunks/dep-D4NMHUTW
+.js:[2m42323:18[22m[39m
+[90m [2mΓ¥»[22m loadAndTransform node_m
+odules/vite/dist/node/chunks/dep-D4NMHUTW.
+js:[2m35739:27[22m[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/
+3]ΓÄ»[22m[39m
+
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m[1m[41m 
+Failed Tests 2 
+[49m[22m[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[41m[1m FAIL [22m[49m 
+src/test/unit/marketStore.test.ts[2m > 
+[22mMarket Store[2m > [22mshould 
+update market data for a specific symbol
+[31m[1mAssertionError[22m: expected 
+undefined to be 95000 // Object.is 
+equality[39m
+
+[32m- Expected:[39m 
+95000
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2mΓ¥»[22m src/test/unit/marketSto
+re.test.ts:[2m21:24[22m[39m
+    [90m 19| [39m    
+    [90m 20| [39m    const btc = useMark
+etStore.getState().marketData.find(m => 
+m.symboΓÇª
+    [90m 21| [39m    [34mexpect[39m(bt
+c[33m?.[39mprice)[33m.[39m[34mtoBe[3
+9m([34m95000[39m)[33m;[39m
+    [90m   | [39m                       
+[31m^[39m
+    [90m 22| [39m  })[33m;[39m
+    [90m 23| [39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/
+3]ΓÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m 
+src/test/unit/marketStore.test.ts[2m > 
+[22mMarket Store[2m > [22mshould 
+handle multiple updates correctly
+[31m[1mAssertionError[22m: expected 
+undefined to be 95000 // Object.is 
+equality[39m
+
+[32m- Expected:[39m 
+95000
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2mΓ¥»[22m src/test/unit/marketSto
+re.test.ts:[2m28:91[22m[39m
+    [90m 26| [39m    
+useMarketStore.getState().updateMarket({ 
+symbol: 'ETH/USD', price:ΓÇª
+    [90m 27| [39m    
+    [90m 28| [39m    expect(useMarketSto
+re.getState().marketData.find(m => 
+m.symbol ===ΓÇª
+    [90m   | [39m                       
+                                          
+                         [31m^[39m
+    [90m 29| [39m    expect(useMarketSto
+re.getState().marketData.find(m => 
+m.symbol ===ΓÇª
+    [90m 30| [39m  })[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[3/
+3]ΓÄ»[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m17 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (20)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m74 passed[39m[22m[2m | [22m[33m3 skipped[39m[90m (79)[39m
+[2m   Start at [22m 11:10:29
+[2m   Duration [22m 20.66s[2m (transform 5.56s, setup 24.42s, import 15.50s, tests 13.42s, environment 106.59s)[22m
+

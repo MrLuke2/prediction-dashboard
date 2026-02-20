@@ -8,7 +8,7 @@ import { AI_PROVIDERS } from '../../config/aiProviders';
 import { cn } from '../../lib/utils';
 
 export const AlphaGaugeSkeleton: React.FC = React.memo(() => (
-    <div className="h-full w-full flex flex-col items-center justify-center p-8 space-y-4 bg-zinc-950/30">
+    <div className="h-full w-full flex flex-col items-center justify-center p-8 space-y-4 bg-zinc-950/30" data-testid="alpha-gauge-skeleton">
         <div className="w-48 h-32 rounded-t-full border-t-4 border-r-4 border-l-4 border-zinc-900 border-dashed animate-pulse" />
         <div className="w-24 h-4 bg-zinc-900 rounded animate-pulse" />
     </div>
@@ -19,22 +19,27 @@ const AlphaGaugeBase: React.FC = () => {
   const [isHovered, setIsHovered] = React.useState(false);
 
   const regime = useMemo(() => {
+    if (!data) return { label: 'N/A', color: 'text-zinc-500', bg: 'bg-zinc-500/10 border-zinc-500/20' };
     const p = data.probability;
     if (p < 30) return { label: 'LOW', color: 'text-kalshi-red', bg: 'bg-kalshi-red/10 border-kalshi-red/20' };
     if (p < 60) return { label: 'MEDIUM', color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/20' };
     if (p < 85) return { label: 'HIGH', color: 'text-poly-blue', bg: 'bg-poly-blue/10 border-poly-blue/20' };
     return { label: 'CRITICAL', color: 'text-kalshi-green', bg: 'bg-kalshi-green/10 border-kalshi-green/20' };
-  }, [data.probability]);
+  }, [data?.probability]);
 
-  const chartData = useMemo(() => [
-    {
-      name: 'Alpha',
-      value: data.probability,
-      fill: data.probability > 85 ? '#10b981' : data.probability > 60 ? '#2563eb' : data.probability > 30 ? '#f59e0b' : '#f43f5e',
-    },
-  ], [data.probability]);
+  const chartData = useMemo(() => {
+    if (!data) return [{ name: 'Alpha', value: 0, fill: '#18181b' }];
+    return [
+      {
+        name: 'Alpha',
+        value: data.probability,
+        fill: data.probability > 85 ? '#10b981' : data.probability > 60 ? '#2563eb' : data.probability > 30 ? '#f59e0b' : '#f43f5e',
+      },
+    ];
+  }, [data]);
 
   const breakdownItems = useMemo(() => {
+    if (!data) return [];
     if (!data.breakdown) {
       // Defer to default provider if breakdown is missing
       const defaultProvider = AI_PROVIDERS[0];
@@ -49,7 +54,7 @@ const AlphaGaugeBase: React.FC = () => {
       { label: 'Sentiment', ...data.breakdown.sentiment, provider: AI_PROVIDERS.find(p => p.id === data.breakdown?.sentiment.providerId) || AI_PROVIDERS[0] },
       { label: 'Risk', ...data.breakdown.risk, provider: AI_PROVIDERS.find(p => p.id === data.breakdown?.risk.providerId) || AI_PROVIDERS[0] },
     ];
-  }, [data.breakdown, data.probability]);
+  }, [data]);
 
   if (!data) return <AlphaGaugeSkeleton />;
 
@@ -93,7 +98,7 @@ const AlphaGaugeBase: React.FC = () => {
               {regime.label}
             </div>
             <div className="text-4xl font-bold text-white tracking-tighter font-mono flex items-baseline">
-              {data.probability.toFixed(0)}
+              {data?.probability?.toFixed(0) ?? '0'}
               <span className="text-lg text-zinc-600">%</span>
             </div>
             <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-1 flex items-center space-x-1">

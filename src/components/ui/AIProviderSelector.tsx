@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Check, Bot, Sparkles, Cpu, Zap } from 'lucide-react';
-import { useUIStore } from '../../store';
+import { useUIStore, useNotificationStore } from '../../store';
 import { AI_PROVIDERS, AIProviderId, AIProviderSelection } from '../../config/aiProviders';
 import { cn } from '../../lib/utils';
 
@@ -12,6 +12,7 @@ interface AIProviderSelectorProps {
 export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = 'compact' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { aiProvider, setAIProvider } = useUIStore();
+  const { addToast } = useNotificationStore();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentProvider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId) || AI_PROVIDERS[0];
@@ -29,10 +30,23 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
   const handleProviderSelect = (providerId: AIProviderId) => {
     const provider = AI_PROVIDERS.find(p => p.id === providerId)!;
     setAIProvider({ providerId, model: provider.defaultModel });
+    addToast({
+        type: 'agent',
+        title: 'Agent Synchronized',
+        message: `${provider.name} agents active`,
+        providerId
+    });
   };
 
   const handleModelSelect = (providerId: AIProviderId, model: string) => {
+    const provider = AI_PROVIDERS.find(p => p.id === providerId)!;
     setAIProvider({ providerId, model });
+    addToast({
+        type: 'agent',
+        title: 'Model Updated',
+        message: `${provider.name} model: ${model}`,
+        providerId
+    });
   };
 
   const getProviderIcon = (id: AIProviderId) => {
@@ -49,6 +63,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
       <div className="relative" ref={containerRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
+          data-testid="ai-provider-selector-trigger"
           className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-fin-border hover:border-zinc-600 transition-colors"
         >
           <div 
@@ -74,13 +89,14 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
                   <div key={provider.id} className="space-y-1">
                     <button
                       onClick={() => handleProviderSelect(provider.id)}
+                      data-testid={`ai-provider-option-${provider.id}`}
                       className={cn(
                         "w-full flex items-center justify-between p-2 rounded-lg transition-all group",
                         aiProvider.providerId === provider.id 
                           ? "bg-zinc-900 ring-1 ring-inset" 
                           : "hover:bg-zinc-900/50"
                       )}
-                      style={{ ringColor: aiProvider.providerId === provider.id ? provider.color : 'transparent' }}
+                      style={{ borderColor: aiProvider.providerId === provider.id ? provider.color : 'transparent' }}
                     >
                       <div className="flex items-center space-x-3">
                         <div className="p-1.5 rounded-md bg-zinc-800 text-text-muted group-hover:text-white transition-colors" style={{ color: aiProvider.providerId === provider.id ? provider.color : undefined }}>
@@ -98,6 +114,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
                       <div className="ml-10 pr-2 pb-2">
                         <select
                           value={aiProvider.model}
+                          data-testid="ai-model-select"
                           onChange={(e) => handleModelSelect(provider.id, e.target.value)}
                           className="w-full bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 rounded px-2 py-1 focus:outline-none focus:border-zinc-600"
                         >
@@ -131,7 +148,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
           )}
           style={{ 
             borderColor: aiProvider.providerId === provider.id ? provider.color : undefined,
-            ringColor: aiProvider.providerId === provider.id ? `${provider.color}44` : undefined
+            boxShadow: aiProvider.providerId === provider.id ? `0 0 0 2px ${provider.color}44` : undefined
           }}
           onClick={() => handleProviderSelect(provider.id)}
         >

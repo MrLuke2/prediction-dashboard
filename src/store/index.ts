@@ -98,8 +98,8 @@ export const useTradeStore = create<TradeState>((set) => ({
     setDisplayedPnL: (pnl) => set({ displayedPnL: pnl }),
     setTradeHistory: (history) => set({ tradeHistory: history }),
     setLastPnL: (pnl) => set({ lastPnL: pnl }),
-    addWhaleMovement: (movement) => set((state) => ({
-        whaleData: [movement, ...(useMarketStore.getState().whaleData)].slice(0, 50)
+    addWhaleMovement: (movement) => useMarketStore.setState((state) => ({
+        whaleData: [movement, ...state.whaleData].slice(0, 50)
     })),
     addLog: (log) => useUIStore.getState().setLogs([log, ...useUIStore.getState().logs].slice(0, 100)),
     updateTrade: (update) => {

@@ -9,9 +9,14 @@
       "DOM",
       "DOM.Iterable"
     ],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "types": [
-      "node"
+      "node",
+      "vitest/globals"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,

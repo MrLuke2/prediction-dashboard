@@ -53,11 +53,11 @@ export interface LayoutState {
 export interface MarketState {
     marketData: MarketPair[];
     selectedMarket: MarketPair | null;
-    alphaMetric: AlphaMetric;
+    alphaMetric: AlphaMetric | null;
     whaleData: WhaleMovement[];
     setSelectedMarket: (market: MarketPair | null) => void;
     setMarketData: (data: MarketPair[]) => void;
-    setAlphaMetric: (metric: AlphaMetric) => void;
+    setAlphaMetric: (metric: AlphaMetric | null) => void;
     setWhaleData: (data: WhaleMovement[]) => void;
     updateMarket: (update: MarketPair) => void;
 }

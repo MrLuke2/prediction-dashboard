@@ -62,7 +62,7 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose, index }) => {
                 <div className={cn(
                     "p-2 rounded-lg shrink-0",
                     toast.type === 'agent' ? "bg-zinc-800" : "bg-white/5"
-                )}>
+                )} data-testid={`toast-icon-${toast.type}`}>
                     <Icon size={18} />
                 </div>
                 
