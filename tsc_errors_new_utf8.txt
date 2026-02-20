@@ -1,0 +1,2 @@
+﻿src/components/widgets/AlphaGauge.tsx(28,7): error TS18047: 'data' is possibly 'null'.
+src/store/__tests__/market_trade.test.ts(13,16): error TS2531: Object is possibly 'null'.
