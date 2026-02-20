@@ -21,7 +21,7 @@ import { WIDGET_REGISTRY } from '../widgets/registry';
 import { LayoutGrid } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
-import { MobileTab } from './MobileNav';
+import { MobileTab } from '../../store/types';
 
 // --- Internal Helper Components ---
 

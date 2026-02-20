@@ -22,6 +22,7 @@ export const useUIStore = create<UIState>((set) => ({
     searchQuery: '',
     isSearchFocused: false,
     logs: [],
+    mobileTab: 'overview',
     setTutorialOpen: (open) => set({ isTutorialOpen: open }),
     setAuthOpen: (open) => set({ isAuthOpen: open }),
     setBooting: (booting) => set({ isBooting: booting }),
@@ -30,6 +31,7 @@ export const useUIStore = create<UIState>((set) => ({
     setSearchQuery: (query) => set({ searchQuery: query }),
     setSearchFocused: (focused) => set({ isSearchFocused: focused }),
     setLogs: (logs) => set({ logs }),
+    setMobileTab: (tab) => set({ mobileTab: tab }),
 }));
 
 export const useLayoutStore = create<LayoutState>()(

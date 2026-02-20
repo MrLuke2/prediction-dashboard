@@ -1,13 +1,7 @@
 import React from 'react';
 import { LayoutGrid, Activity, History, Newspaper, PieChart, Shield } from 'lucide-react';
 import { cn } from '../../lib/utils';
-
-export type MobileTab = 'overview' | 'predictions' | 'news' | 'execution' | 'radar';
-
-interface MobileNavProps {
-  activeTab: MobileTab;
-  onTabChange: (tab: MobileTab) => void;
-}
+import { useUIStore } from '../../store';
 
 const TABS = [
   { id: 'overview' as const, label: 'Hub', icon: Shield },
@@ -17,7 +11,10 @@ const TABS = [
   { id: 'radar' as const, label: 'Radar', icon: PieChart },
 ];
 
-export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onTabChange }) => {
+export const MobileNav: React.FC = () => {
+  const activeTab = useUIStore(state => state.mobileTab);
+  const setMobileTab = useUIStore(state => state.setMobileTab);
+
   return (
     <nav 
       className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-brand-fin-card border-t border-brand-fin-border grid grid-cols-5 z-[60] backdrop-blur-xl bg-opacity-90 px-2 pb-safe"
@@ -27,7 +24,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onTabChange }) 
       {TABS.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
-          onClick={() => onTabChange(id)}
+          onClick={() => setMobileTab(id)}
           className={cn(
             "flex flex-col items-center justify-center space-y-1 transition-all brand-focus-ring relative",
             activeTab === id ? "text-brand-poly-blue" : "text-zinc-500 hover:text-zinc-300"

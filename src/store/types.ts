@@ -1,5 +1,7 @@
 import { MarketPair, PnLData, LogEntry, AlphaMetric, WhaleMovement } from '../types';
 
+export type MobileTab = 'overview' | 'predictions' | 'news' | 'execution' | 'radar';
+
 export type WidgetType = 'liveFeed' | 'alphaGauge' | 'btcTracker' | 'pnlCard' | 'tradeHistory' | 'whaleRadar' | 'newsFeed';
 
 export interface LayoutSlots {
@@ -21,6 +23,7 @@ export interface UIState {
     searchQuery: string;
     isSearchFocused: boolean;
     logs: LogEntry[];
+    mobileTab: MobileTab;
     setTutorialOpen: (open: boolean) => void;
     setAuthOpen: (open: boolean) => void;
     setBooting: (booting: boolean) => void;
@@ -29,6 +32,7 @@ export interface UIState {
     setSearchQuery: (query: string) => void;
     setSearchFocused: (focused: boolean) => void;
     setLogs: (logs: LogEntry[]) => void;
+    setMobileTab: (tab: MobileTab) => void;
 }
 
 export interface LayoutState {
