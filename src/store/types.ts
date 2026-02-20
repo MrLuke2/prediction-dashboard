@@ -62,14 +62,24 @@ export interface MarketState {
     updateMarket: (update: MarketPair) => void;
 }
 
+export interface TradeParams {
+    marketPairId: string;
+    side: 'buy' | 'sell';
+    size: number;
+    venue: string;
+    aiProvider: AIProviderSelection;
+}
+
 export interface TradeState {
     displayedPnL: PnLData | null;
     tradeHistory: PnLData[];
     lastPnL: PnLData | null;
+    pendingTrade: TradeParams | null;
     setDisplayedPnL: (pnl: PnLData | null) => void;
     setTradeHistory: (history: PnLData[]) => void;
     setLastPnL: (pnl: PnLData | null) => void;
     addWhaleMovement: (movement: WhaleMovement) => void;
     addLog: (log: LogEntry) => void;
     updateTrade: (update: any) => void;
+    submitTrade: (params: TradeParams) => void;
 }

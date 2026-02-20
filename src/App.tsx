@@ -12,6 +12,7 @@ import { useMediaQuery } from './hooks/useMediaQuery';
 import { useConnectionStatus } from './hooks/useConnectionStatus';
 import { TUTORIAL_STEPS } from './config/tutorialSteps';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useGlobalKeyboard } from './hooks/useGlobalKeyboard';
 import { measureRender, logSlowRenders } from './lib/perf';
 import { WifiOff, X } from 'lucide-react';
 
@@ -23,6 +24,9 @@ if (process.env.NODE_ENV !== 'production') {
 const AppBase: React.FC = () => {
   // Sync simulator data to global stores
   useSimulatorSync();
+
+  // Global keyboard shortcuts
+  useGlobalKeyboard();
   
   // Connection monitoring
   const { isOnline } = useConnectionStatus();

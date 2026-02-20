@@ -94,6 +94,7 @@ export const useTradeStore = create<TradeState>((set) => ({
     displayedPnL: null,
     tradeHistory: [],
     lastPnL: null,
+    pendingTrade: null,
     setDisplayedPnL: (pnl) => set({ displayedPnL: pnl }),
     setTradeHistory: (history) => set({ tradeHistory: history }),
     setLastPnL: (pnl) => set({ lastPnL: pnl }),
@@ -104,5 +105,10 @@ export const useTradeStore = create<TradeState>((set) => ({
     updateTrade: (update) => {
         // Logic for trade updates
         console.log('[Store] Trade updated:', update);
+    },
+    submitTrade: (params) => {
+        console.log('[Store] Submitting trade:', params);
+        set({ pendingTrade: params });
+        // In a real app, this would be an API call
     }
 }));
