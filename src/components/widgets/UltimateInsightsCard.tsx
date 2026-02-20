@@ -182,18 +182,50 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
             </div>
         </GlassPanel>
 
-        {/* AI Provider Breakdown Chart (CSS Only) */}
+        {/* AI Provider Breakdown Chart */}
         <div className="space-y-2">
             <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Confidence Contribution</h3>
-            <div className="h-6 w-full flex rounded-md overflow-hidden border border-zinc-800">
-                <div className="h-full bg-amber-500" style={{ width: '45%' }} title="Claude: 45%" />
-                <div className="h-full bg-green-500" style={{ width: '30%' }} title="GPT-4o: 30%" />
-                <div className="h-full bg-blue-500" style={{ width: '25%' }} title="Gemini: 25%" />
+            <div className="h-6 w-full flex rounded-md overflow-hidden border border-zinc-800 bg-zinc-950">
+                {(() => {
+                    const agentModels = useUIStore.getState().agentModels;
+                    const providers = Object.values(agentModels).map(a => a.providerId);
+                    const counts = providers.reduce((acc, p) => ({ ...acc, [p]: (acc[p] || 0) + 1 }), {} as Record<string, number>);
+                    const total = providers.length;
+
+                    return AI_PROVIDERS.filter(p => counts[p.id]).map(provider => {
+                        const percent = (counts[provider.id] / total) * 100;
+                        return (
+                            <div 
+                                key={provider.id}
+                                className="h-full transition-all duration-500 border-r border-black last:border-r-0" 
+                                style={{ 
+                                    width: `${percent}%`, 
+                                    backgroundColor: provider.color 
+                                }} 
+                                title={`${provider.name}: ${percent.toFixed(0)}% contribution`} 
+                            />
+                        );
+                    });
+                })()}
             </div>
             <div className="flex justify-between text-[9px] text-zinc-600 font-mono">
-                <span>ANTHROPIC (45%)</span>
-                <span>OPENAI (30%)</span>
-                <span>GOOGLE (25%)</span>
+                <div className="flex space-x-3">
+                    {(() => {
+                        const agentModels = useUIStore.getState().agentModels;
+                        const providers = Array.from(new Set(Object.values(agentModels).map(a => a.providerId)));
+                        return providers.map(pid => {
+                            const p = AI_PROVIDERS.find(p => p.id === pid);
+                            const count = Object.values(agentModels).filter(a => a.providerId === pid).length;
+                            return (
+                                <span key={pid} className="flex items-center space-x-1">
+                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p?.color }} />
+                                    <span className="text-white font-bold">{p?.name.toUpperCase()} ({(count/3 * 100).toFixed(0)}%)</span>
+                                </span>
+                            );
+                        });
+                    })()}
+                </div>
+                <span>DYNAMIC AGENT COUNCIL PIPELINE</span>
             </div>
         </div>
 
@@ -351,7 +383,7 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
                     {AI_PROVIDERS.map(p => (
                         <button 
                             key={p.id}
-                            onClick={() => setAIProvider({ providerId: p.id, model: p.defaultModelId })}
+                            onClick={() => setAIProvider({ providerId: p.id, model: p.defaultModel })}
                             className={`p-2 rounded-lg border flex flex-col items-center justify-center transition-all ${
                                 currentAISelection.providerId === p.id 
                                 ? 'bg-zinc-800 border-white/20' 

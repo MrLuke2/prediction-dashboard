@@ -1,6 +1,6 @@
-import { MessageType, WSMessage, createMessage } from './protocol';
+import { MessageType, ClientMessage, ServerMessage } from './protocol';
 
-export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
+type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
 type MessageHandler = (payload: any) => void;
 
 export class WebSocketClient {
@@ -9,169 +9,142 @@ export class WebSocketClient {
   private getToken: () => string | null;
   private state: ConnectionState = 'disconnected';
   private handlers: Map<MessageType, Set<MessageHandler>> = new Map();
-  private messageQueue: WSMessage[] = [];
+  private messageQueue: string[] = [];
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = Infinity;
-  private baseReconnectDelay = 1000;
-  private maxReconnectDelay = 30000;
-  private pingInterval: number | null = null;
-  private pongTimeout: number | null = null;
-  private onStateChange: (state: ConnectionState) => void;
+  private maxBackoff = 30000;
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private pongTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(
-    url: string, 
-    getToken: () => string | null,
-    onStateChange: (state: ConnectionState) => void
-  ) {
+  constructor(url: string, getToken: () => string | null) {
     this.url = url;
     this.getToken = getToken;
-    this.onStateChange = onStateChange;
   }
 
   public connect() {
     if (this.socket || this.state === 'connecting') return;
 
-    this.setState('connecting');
-    
-    try {
-      const token = this.getToken();
-      const connectionUrl = token ? `${this.url}?token=${token}` : this.url;
-      
-      this.socket = new WebSocket(connectionUrl);
-      this.socket.onopen = this.handleOpen.bind(this);
-      this.socket.onmessage = this.handleMessage.bind(this);
-      this.socket.onclose = this.handleClose.bind(this);
-      this.socket.onerror = this.handleError.bind(this);
-    } catch (error) {
-      console.error('[WS] Connection error:', error);
-      this.setState('error');
+    this.state = 'connecting';
+    this.socket = new WebSocket(this.url);
+
+    this.socket.onopen = () => {
+      console.log('[WS] Connected');
+      this.state = 'connected';
+      this.reconnectAttempts = 0;
+      this.processQueue();
+      this.startHeartbeat();
+      this.emit('connected', null);
+    };
+
+    this.socket.onclose = () => {
+      console.log('[WS] Disconnected');
+      this.state = 'disconnected';
+      this.stopHeartbeat();
       this.scheduleReconnect();
-    }
+      this.emit('disconnected', null);
+    };
+
+    this.socket.onerror = (error) => {
+      console.error('[WS] Error:', error);
+      this.state = 'error';
+      this.emit('error', error);
+    };
+
+    this.socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const { type, payload } = data;
+        
+        if (type === MessageType.PONG) {
+          if (this.pongTimeout) clearTimeout(this.pongTimeout);
+        } else if (type in MessageType) {
+          this.notifyHandlers(type as MessageType, payload);
+        } else {
+          console.warn('[WS] Received unknown message type:', type);
+        }
+      } catch (e) {
+        console.error('[WS] Failed to parse message:', e);
+      }
+    };
   }
 
   public disconnect() {
-    this.stopHeartbeat();
     if (this.socket) {
       this.socket.close();
       this.socket = null;
     }
-    this.setState('disconnected');
+    this.stopHeartbeat();
   }
 
   public send(type: MessageType, payload: any) {
-    const message = createMessage(type, payload);
-    
-    if (this.state === 'connected' && this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify(message));
+    const message: ClientMessage = {
+      type: type as any,
+      payload,
+      ts: Date.now()
+    };
+    const json = JSON.stringify(message);
+
+    if (this.state === 'connected' && this.socket) {
+      this.socket.send(json);
     } else {
-      this.messageQueue.push(message);
+      this.messageQueue.push(json);
     }
   }
 
-  public on(type: MessageType, handler: MessageHandler) {
-    if (!this.handlers.has(type)) {
-      this.handlers.set(type, new Set());
+  public on(type: MessageType | string, handler: MessageHandler) {
+    const t = type as MessageType;
+    if (!this.handlers.has(t)) {
+      this.handlers.set(t, new Set());
     }
-    this.handlers.get(type)!.add(handler);
-    
+    this.handlers.get(t)!.add(handler);
+
     return () => {
-      this.handlers.get(type)?.delete(handler);
+      this.handlers.get(t)?.delete(handler);
     };
   }
 
-  public getState() {
-    return this.state;
+  private notifyHandlers(type: MessageType, payload: any) {
+    this.handlers.get(type)?.forEach(handler => handler(payload));
   }
 
-  private setState(state: ConnectionState) {
-    this.state = state;
-    this.onStateChange(state);
+  private emit(event: string, data: any) {
+    // Custom internal events like 'connected'
+    (this.handlers.get(event as any) || []).forEach((handler: any) => handler(data));
   }
 
-  private handleOpen() {
-    console.log('[WS] Connected');
-    this.setState('connected');
-    this.reconnectAttempts = 0;
-    this.startHeartbeat();
-    this.flushQueue();
-  }
-
-  private handleMessage(event: MessageEvent) {
-    try {
-      const message: WSMessage = JSON.parse(event.data);
-      
-      if (message.type === 'PONG') {
-        this.handlePong();
-        return;
-      }
-
-      this.handlers.get(message.type)?.forEach(handler => handler(message.payload));
-    } catch (error) {
-      console.error('[WS] Message parsing error:', error);
+  private processQueue() {
+    while (this.messageQueue.length > 0 && this.state === 'connected' && this.socket) {
+      const msg = this.messageQueue.shift();
+      if (msg) this.socket.send(msg);
     }
-  }
-
-  private handleClose() {
-    console.log('[WS] Closed');
-    this.socket = null;
-    this.setState('disconnected');
-    this.stopHeartbeat();
-    this.scheduleReconnect();
-  }
-
-  private handleError(error: Event) {
-    console.error('[WS] Error:', error);
-    this.setState('error');
   }
 
   private scheduleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
-
-    const delay = Math.min(
-      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
-      this.maxReconnectDelay
-    );
-
-    console.log(`[WS] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
-    
-    setTimeout(() => {
-      this.reconnectAttempts++;
-      this.connect();
-    }, delay);
-  }
-
-  private flushQueue() {
-    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
-
-    while (this.messageQueue.length > 0) {
-      const message = this.messageQueue.shift();
-      this.socket.send(JSON.stringify(message));
-    }
+    const backoff = Math.min(1000 * Math.pow(2, this.reconnectAttempts), this.maxBackoff);
+    this.reconnectAttempts++;
+    console.log(`[WS] Reconnecting in ${backoff}ms...`);
+    setTimeout(() => this.connect(), backoff);
   }
 
   private startHeartbeat() {
     this.stopHeartbeat();
-    
-    this.pingInterval = window.setInterval(() => {
-      this.send('PING', { ts: Date.now() });
-      
-      this.pongTimeout = window.setTimeout(() => {
-        console.warn('[WS] Pong timeout, disconnecting...');
+    this.heartbeatInterval = setInterval(() => {
+      this.send(MessageType.PING, { ts: Date.now() });
+      this.pongTimeout = setTimeout(() => {
+        console.warn('[WS] Heartbeat timeout, reconnecting...');
         this.disconnect();
-        this.scheduleReconnect();
+        this.connect();
       }, 10000);
     }, 30000);
   }
 
   private stopHeartbeat() {
-    if (this.pingInterval) clearInterval(this.pingInterval);
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
     if (this.pongTimeout) clearTimeout(this.pongTimeout);
+    this.heartbeatInterval = null;
+    this.pongTimeout = null;
   }
 
-  private handlePong() {
-    if (this.pongTimeout) {
-      clearTimeout(this.pongTimeout);
-      this.pongTimeout = null;
-    }
+  public getState() {
+    return this.state;
   }
 }

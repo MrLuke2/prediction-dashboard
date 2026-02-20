@@ -46,9 +46,11 @@ export const useA2UISimulator = () => {
     
     let providerId = aiProvider.providerId;
     const agentName = agent.toLowerCase();
-    if (agentName.includes('fundamental')) providerId = agentModels.fundamentalist.providerId;
-    else if (agentName.includes('sentiment')) providerId = agentModels.sentiment.providerId;
-    else if (agentName.includes('risk')) providerId = agentModels.risk.providerId;
+    if (agentModels) {
+      if (agentName.includes('fundamental')) providerId = agentModels.fundamentalist?.providerId || providerId;
+      else if (agentName.includes('sentiment')) providerId = agentModels.sentiment?.providerId || providerId;
+      else if (agentName.includes('risk')) providerId = agentModels.risk?.providerId || providerId;
+    }
 
     const newLog: LogEntry = {
       id: Math.random().toString(36).substr(2, 9),

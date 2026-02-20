@@ -12,7 +12,21 @@ type FilterType = 'ALL' | 'INFO' | 'WARN' | 'ERROR' | 'DEBATE';
 
 // Extracted LogItem for cleaner virtualization and memoization
 const LogItem = React.memo(({ log, idx }: { log: LogEntry, idx: number }) => {
-    const provider = AI_PROVIDERS.find(p => p.id === log.providerId) || AI_PROVIDERS[0];
+    const agentModels = useUIStore(state => state.agentModels);
+    const aiProvider = useUIStore(state => state.aiProvider);
+    
+    // Resolve current provider for this specific agent to ensure synchronicity
+    const provider = useMemo(() => {
+        const agentName = log.agent.toLowerCase();
+        let providerId = log.providerId; // Fallback to historical ID
+
+        if (agentName.includes('fundamental')) providerId = agentModels.fundamentalist?.providerId || providerId;
+        else if (agentName.includes('sentiment')) providerId = agentModels.sentiment?.providerId || providerId;
+        else if (agentName.includes('risk')) providerId = agentModels.risk?.providerId || providerId;
+        else if (agentName.includes('orchestrator')) providerId = aiProvider.providerId; // Orchestrator follows global
+
+        return AI_PROVIDERS.find(p => p.id === providerId) || AI_PROVIDERS[0];
+    }, [log.agent, log.providerId, agentModels, aiProvider.providerId]);
     
     const getLevelStyles = (level: LogLevel) => {
         switch (level) {

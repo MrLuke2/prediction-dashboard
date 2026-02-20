@@ -3,7 +3,7 @@ import { DraggableWidgetGrid } from './components/layout/DraggableWidgetGrid';
 import { BootSequence } from './components/layout/BootSequence';
 import { UltimateInsightsCard } from './components/widgets/UltimateInsightsCard';
 import { AuthModal } from './components/ui/AuthModal';
-import { ModelConsole } from './components/layout/Header/ModelConsole';
+import { ControlCenter } from './components/layout/Header/ControlCenter';
 import { TutorialOverlay } from './components/ui/TutorialOverlay';
 import { MobileNav } from './components/layout/MobileNav';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -64,8 +64,7 @@ const AppBase: React.FC = () => {
     }
     const provider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId);
     if (provider) {
-      const modelDetail = provider.models.find(m => m.id === aiProvider.model);
-      const modelName = modelDetail?.name || aiProvider.model;
+      const modelName = aiProvider.model;
       addToast({ 
         type: 'agent', 
         title: 'AI Provider Switched', 
@@ -154,7 +153,7 @@ const AppBase: React.FC = () => {
           onClose={handleTutorialClose} 
         />
 
-        <ModelConsole />
+        <ControlCenter />
 
         {/* Phase B: Emergency Standby Overlay */}
         <AnimatePresence>

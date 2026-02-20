@@ -1,19 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Check, Bot, Sparkles, Cpu, Zap } from 'lucide-react';
-import { useUIStore, useNotificationStore } from '../../store';
+import { ChevronDown, Check, Bot, Zap, Sparkles } from 'lucide-react';
+import { useUIStore } from '../../store';
 import { AI_PROVIDERS, AIProviderId, AIProviderSelection } from '../../config/aiProviders';
-import { LogLevel, AgentRole, LogEntry } from '../../types';
 import { cn } from '../../lib/utils';
 
 interface AIProviderSelectorProps {
   mode?: 'compact' | 'full';
 }
 
+const PROVIDER_ICONS: Record<string, React.ReactNode> = {
+  anthropic: <Bot size={16} />,
+  openai: <Zap size={16} />,
+  gemini: <Sparkles size={16} />,
+};
+
+const PROVIDER_ICONS_LARGE: Record<string, React.ReactNode> = {
+  anthropic: <Bot size={24} />,
+  openai: <Zap size={24} />,
+  gemini: <Sparkles size={24} />,
+};
+
 export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = 'compact' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { aiProvider, setAIProvider } = useUIStore();
-  const { addToast } = useNotificationStore();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentProvider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId) || AI_PROVIDERS[0];
@@ -30,58 +40,11 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
 
   const handleProviderSelect = (providerId: AIProviderId) => {
     const provider = AI_PROVIDERS.find(p => p.id === providerId)!;
-    setAIProvider({ providerId, model: provider.defaultModelId });
-    addToast({
-        type: 'agent',
-        title: 'Agent Synchronized',
-        message: `${provider.name} agents active`,
-        providerId
-    });
-
-    // Add technical log
-    const { logs, setLogs } = useUIStore.getState();
-    const newLog: LogEntry = {
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toISOString(),
-      agent: AgentRole.ORCHESTRATOR,
-      message: `NEURAL PIPELINE RE-ASSIGNED TO ${provider.name.toUpperCase()} (ALL AGENTS)`,
-      level: LogLevel.SUCCESS,
-      providerId
-    };
-    setLogs([newLog, ...logs].slice(0, 100));
+    setAIProvider({ providerId, model: provider.defaultModel });
   };
 
   const handleModelSelect = (providerId: AIProviderId, model: string) => {
-    const provider = AI_PROVIDERS.find(p => p.id === providerId)!;
-    const modelDetail = provider.models.find(m => m.id === model);
     setAIProvider({ providerId, model });
-    addToast({
-        type: 'agent',
-        title: 'Model Updated',
-        message: `${provider.name} — ${modelDetail?.name || model}`,
-        providerId
-    });
-
-    // Add technical log
-    const { logs, setLogs } = useUIStore.getState();
-    const newLog: LogEntry = {
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toISOString(),
-      agent: AgentRole.ORCHESTRATOR,
-      message: `GLOBAL MODEL UPDATED: ${modelDetail?.name?.toUpperCase() || model.toUpperCase()}`,
-      level: LogLevel.SUCCESS,
-      providerId
-    };
-    setLogs([newLog, ...logs].slice(0, 100));
-  };
-
-  const getProviderIcon = (id: AIProviderId) => {
-    switch (id) {
-      case 'anthropic': return <Bot size={16} />;
-      case 'openai': return <Zap size={16} />;
-      case 'gemini': return <Sparkles size={16} />;
-      default: return <Cpu size={16} />;
-    }
   };
 
   if (mode === 'compact') {
@@ -89,17 +52,19 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
       <div className="relative" ref={containerRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          data-testid="ai-provider-selector-trigger"
           className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-fin-border hover:border-zinc-600 transition-colors"
         >
           <div 
-            className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(var(--color-primary-rgb),0.5)]" 
-            style={{ backgroundColor: currentProvider.color }}
+            className="w-2 h-2 rounded-full shadow-lg" 
+            style={{ 
+                backgroundColor: currentProvider.color,
+                boxShadow: `0 0 8px ${currentProvider.color}` 
+            }}
           />
           <span className="text-[10px] font-bold text-white uppercase tracking-tight">
-            {currentProvider.name} <span className="text-text-muted font-normal ml-1">/ {currentProvider.models.find(m => m.id === aiProvider.model)?.name || aiProvider.model}</span>
+            {currentProvider.name} <span className="text-zinc-500 font-normal ml-1">/ {aiProvider.model}</span>
           </span>
-          <ChevronDown size={12} className={cn("text-text-muted transition-transform", isOpen && "rotate-180")} />
+          <ChevronDown size={12} className={cn("text-zinc-500 transition-transform", isOpen && "rotate-180")} />
         </button>
 
         <AnimatePresence>
@@ -108,29 +73,30 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
-              className="absolute top-full right-0 mt-2 w-64 bg-zinc-950 border border-fin-border rounded-xl shadow-2xl z-[100] overflow-hidden"
+              className="absolute top-full right-0 mt-2 w-72 bg-zinc-950 border border-fin-border rounded-xl shadow-2xl z-[100] overflow-hidden"
             >
               <div className="p-2 space-y-1">
                 {AI_PROVIDERS.map((provider) => (
                   <div key={provider.id} className="space-y-1">
                     <button
                       onClick={() => handleProviderSelect(provider.id)}
-                      data-testid={`ai-provider-option-${provider.id}`}
                       className={cn(
                         "w-full flex items-center justify-between p-2 rounded-lg transition-all group",
                         aiProvider.providerId === provider.id 
-                          ? "bg-zinc-900 ring-1 ring-inset" 
+                          ? "bg-zinc-900" 
                           : "hover:bg-zinc-900/50"
                       )}
-                      style={{ borderColor: aiProvider.providerId === provider.id ? provider.color : 'transparent' }}
+                      style={{ 
+                        boxShadow: aiProvider.providerId === provider.id ? `inset 0 0 0 1px ${provider.color}44` : undefined 
+                      }}
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="p-1.5 rounded-md bg-zinc-800 text-text-muted group-hover:text-white transition-colors" style={{ color: aiProvider.providerId === provider.id ? provider.color : undefined }}>
-                          {getProviderIcon(provider.id)}
+                        <div className="p-1.5 rounded-md bg-zinc-800" style={{ color: provider.color }}>
+                          {PROVIDER_ICONS[provider.id]}
                         </div>
                         <div className="text-left">
                           <p className="text-xs font-bold text-white tracking-tight">{provider.name}</p>
-                          <p className="text-[10px] text-text-muted line-clamp-1">{provider.description}</p>
+                          <p className="text-[10px] text-zinc-500 line-clamp-1">{provider.description}</p>
                         </div>
                       </div>
                       {aiProvider.providerId === provider.id && <Check size={14} style={{ color: provider.color }} />}
@@ -138,16 +104,22 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
 
                     {aiProvider.providerId === provider.id && (
                       <div className="ml-10 pr-2 pb-2">
-                        <select
-                          value={aiProvider.model}
-                          data-testid="ai-model-select"
-                          onChange={(e) => handleModelSelect(provider.id, e.target.value)}
-                          className="w-full bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 rounded px-2 py-1 focus:outline-none focus:border-zinc-600"
-                        >
+                        <div className="flex flex-wrap gap-1">
                           {provider.models.map(model => (
-                            <option key={model.id} value={model.id}>{model.name}</option>
+                            <button
+                              key={model}
+                              onClick={() => handleModelSelect(provider.id, model)}
+                              className={cn(
+                                "px-2 py-1 rounded text-[9px] font-bold transition-colors",
+                                aiProvider.model === model 
+                                    ? "bg-white text-black" 
+                                    : "bg-zinc-900 text-zinc-400 hover:text-white"
+                              )}
+                            >
+                              {model}
+                            </button>
                           ))}
-                        </select>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -163,49 +135,69 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
   // Full Mode
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {AI_PROVIDERS.map((provider) => (
-        <div
-          key={provider.id}
-          className={cn(
-            "p-4 rounded-xl border transition-all cursor-pointer bg-zinc-900/50",
-            aiProvider.providerId === provider.id 
-              ? "border-opacity-100 ring-2" 
-              : "border-fin-border hover:border-zinc-700"
-          )}
-          style={{ 
-            borderColor: aiProvider.providerId === provider.id ? provider.color : undefined,
-            boxShadow: aiProvider.providerId === provider.id ? `0 0 0 2px ${provider.color}44` : undefined
-          }}
-          onClick={() => handleProviderSelect(provider.id)}
-        >
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="p-3 rounded-xl bg-zinc-800" style={{ color: provider.color }}>
-              {getProviderIcon(provider.id)}
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">{provider.name}</h3>
-              <p className="text-[10px] text-text-muted">{provider.id === 'anthropic' ? 'Advanced' : provider.id === 'openai' ? 'Standard' : 'Multimodal'}</p>
-            </div>
-          </div>
-          
-          <p className="text-xs text-text-muted leading-relaxed mb-6 h-8">
-            {provider.description}
-          </p>
+      {AI_PROVIDERS.map((provider) => {
+        const isSelected = aiProvider.providerId === provider.id;
+        return (
+          <div
+            key={provider.id}
+            className={cn(
+              "p-5 rounded-2xl border transition-all cursor-pointer bg-zinc-900/40 relative overflow-hidden group",
+              isSelected 
+                ? "ring-2 ring-offset-2 ring-offset-black" 
+                : "border-fin-border hover:border-zinc-700"
+            )}
+            style={{ 
+              borderColor: isSelected ? provider.color : undefined,
+            }}
+            onClick={() => handleProviderSelect(provider.id)}
+          >
+            {isSelected && (
+                <div className="absolute top-0 right-0 p-2">
+                    <div className="bg-white rounded-full p-0.5" style={{ color: provider.color }}>
+                        <Check size={12} strokeWidth={4} />
+                    </div>
+                </div>
+            )}
 
-          <div onClick={(e) => e.stopPropagation()}>
-            <label className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-2 block">Model Intelligence</label>
-            <select
-              value={aiProvider.providerId === provider.id ? aiProvider.model : provider.defaultModelId}
-              onChange={(e) => handleModelSelect(provider.id, e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-600"
-            >
-              {provider.models.map(model => (
-                <option key={model.id} value={model.id}>{model.name}</option>
-              ))}
-            </select>
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="p-3 rounded-xl bg-zinc-800" style={{ color: provider.color }}>
+                {PROVIDER_ICONS_LARGE[provider.id]}
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">{provider.name}</h3>
+                <div 
+                    className="h-1 w-8 rounded-full mt-1" 
+                    style={{ backgroundColor: provider.color }}
+                />
+              </div>
+            </div>
+            
+            <p className="text-xs text-zinc-400 leading-relaxed mb-6">
+              {provider.description}
+            </p>
+
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest block">Neural Architecture</label>
+              <div className="grid grid-cols-1 gap-1.5">
+                {provider.models.map(model => (
+                  <button
+                    key={model}
+                    onClick={() => handleModelSelect(provider.id, model)}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all border",
+                      isSelected && aiProvider.model === model 
+                        ? "bg-white border-white text-black" 
+                        : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-white"
+                    )}
+                  >
+                    {model}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

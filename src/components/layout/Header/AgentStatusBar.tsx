@@ -18,15 +18,10 @@ const AGENTS: Agent[] = [
 
 export const AgentStatusBar: React.FC = () => {
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
-  const agentModels = useUIStore(state => state.agentModels);
+  const aiProvider = useUIStore(state => state.aiProvider);
+  const activeProvider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId) || AI_PROVIDERS[0];
 
-  const getAgentColor = (name: string) => {
-    const roleKey = name.toLowerCase() as AgentConfigRole;
-    const assignment = (agentModels as any)[roleKey];
-    if (!assignment) return AI_PROVIDERS[0].color;
-    const provider = AI_PROVIDERS.find(p => p.id === assignment.providerId);
-    return provider?.color || AI_PROVIDERS[0].color;
-  };
+  const getAgentColor = () => activeProvider.color;
 
   return (
     <div id="network-status" className="hidden lg:flex items-center space-x-2 shrink-0">
@@ -41,8 +36,8 @@ export const AgentStatusBar: React.FC = () => {
             <div 
               className="w-2 h-2 rounded-full animate-pulse transition-colors duration-500" 
               style={{ 
-                backgroundColor: getAgentColor(agent.name),
-                boxShadow: `0 0 8px ${getAgentColor(agent.name)}`
+                backgroundColor: getAgentColor(),
+                boxShadow: `0 0 8px ${getAgentColor()}`
               }}
             ></div>
             <span className="text-[10px] font-medium text-text-muted uppercase">

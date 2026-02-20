@@ -31,7 +31,11 @@ export const useUIStore = create<UIState>()(
             jwt: null,
             user: null,
             isSettingsOpen: false,
-            agentModels: DEFAULT_AGENT_MODEL_CONFIG,
+            agentModels: {
+                fundamentalist: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
+                sentiment: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
+                risk: { providerId: 'gemini', modelId: 'gemini-2.5-flash' }
+            },
             setTutorialOpen: (open) => set({ isTutorialOpen: open }),
             setAuthOpen: (open) => set({ isAuthOpen: open }),
             setBooting: (booting) => set({ isBooting: booting }),
@@ -58,7 +62,7 @@ export const useUIStore = create<UIState>()(
         }),
         {
             name: 'ui-storage',
-            version: 2,
+            version: 3,
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({ 
                 aiProvider: state.aiProvider,
@@ -68,16 +72,17 @@ export const useUIStore = create<UIState>()(
                 user: state.user
             }),
             migrate: (persistedState: any, version: number) => {
-                if (version < 2) {
-                    // Force upgrade: replace any stale Gemini model (e.g. gemini-2.0-flash) 
-                    // with the correct default gemini-2.5-flash
-                    if (persistedState?.aiProvider?.providerId === 'gemini' && 
-                        persistedState?.aiProvider?.model !== 'gemini-2.5-flash') {
-                        persistedState.aiProvider = { 
-                            providerId: 'gemini', 
-                            model: 'gemini-2.5-flash' 
-                        };
-                    }
+                if (version < 3) {
+                    // Force upgrade to Gemini 2.5 Flash as the new system default
+                    persistedState.aiProvider = { 
+                        providerId: 'gemini', 
+                        model: 'gemini-2.5-flash' 
+                    };
+                    persistedState.agentModels = {
+                        fundamentalist: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
+                        sentiment: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
+                        risk: { providerId: 'gemini', modelId: 'gemini-2.5-flash' }
+                    };
                 }
                 return persistedState;
             },

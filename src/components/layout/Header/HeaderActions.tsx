@@ -1,7 +1,9 @@
-import { LayoutGrid, HelpCircle, UserCircle, RotateCcw, Settings } from 'lucide-react';
+import { LayoutGrid, HelpCircle, UserCircle, RotateCcw, Settings, Sliders, Lock } from 'lucide-react';
 import { useUIStore, useLayoutStore } from '../../../store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_PROVIDERS } from '../../../config/aiProviders';
+import { useAuthGuard } from '../../../hooks/useAuthGuard';
+import { cn } from '../../../lib/utils';
 
 export const HeaderActions: React.FC = () => {
   const { 
@@ -12,6 +14,8 @@ export const HeaderActions: React.FC = () => {
     setSettingsOpen,
     aiProvider
   } = useUIStore();
+
+  const { isAuthenticated, requireAuth, user } = useAuthGuard();
 
   const activeProvider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId);
 
@@ -61,24 +65,37 @@ export const HeaderActions: React.FC = () => {
         <span className="hidden sm:inline">{isEditMode ? 'Finish Sync' : 'Edit Layout'}</span>
       </motion.button>
 
-      {/* Model Settings Button */}
+      {/* Control Center Toggle */}
       <button 
-        id="model-settings-toggle"
-        onClick={() => setSettingsOpen(true)}
-        className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-zinc-900 border border-brand-fin-border hover:border-poly-blue/50 transition-all group"
-        aria-label="Open model control console"
+        id="control-center-toggle"
+        onClick={() => isAuthenticated ? setSettingsOpen(true) : setAuthOpen(true)}
+        className={cn(
+            "flex items-center space-x-2 px-3 py-1.5 rounded-md border transition-all group shadow-sm",
+            isAuthenticated 
+                ? "bg-zinc-900 border-brand-fin-border hover:border-kalshi-green/50 hover:shadow-kalshi-green/10" 
+                : "bg-zinc-950/50 border-zinc-800/50 opacity-60 hover:opacity-100"
+        )}
+        aria-label={isAuthenticated ? "Open global control center" : "Sign in to unlock advanced controls"}
       >
         <div className="relative">
-          <Settings size={14} className="text-zinc-400 group-hover:text-poly-blue transition-colors group-hover:rotate-45 duration-300" />
-          <div 
-            className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full border border-black animate-pulse" 
-            style={{ backgroundColor: activeProvider?.color }}
-          />
+          {isAuthenticated ? (
+            <Sliders size={14} className="text-zinc-400 group-hover:text-kalshi-green transition-colors group-hover:rotate-12 duration-300" />
+          ) : (
+            <Lock size={12} className="text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+          )}
+          {isAuthenticated && (
+            <div 
+                className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full border border-black animate-pulse" 
+                style={{ backgroundColor: activeProvider?.color }}
+            />
+          )}
         </div>
         <div className="hidden md:flex flex-col items-start leading-none space-y-0.5">
-          <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Active Model</span>
-          <span className="text-[10px] font-bold text-white uppercase tracking-tighter truncate max-w-[100px]">
-            {activeProvider?.models.find(m => m.id === aiProvider.model)?.name || aiProvider.model.replace(/-/g, ' ')}
+          <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">
+            {isAuthenticated ? 'Systems' : 'Advanced'}
+          </span>
+          <span className="text-[10px] font-bold text-white uppercase tracking-tighter">
+            {isAuthenticated ? 'Control' : 'Locked'}
           </span>
         </div>
       </button>

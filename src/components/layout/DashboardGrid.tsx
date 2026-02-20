@@ -17,7 +17,7 @@ export const DashboardGrid: React.FC = () => {
       {/* LEFT COLUMN */}
       <Panel defaultSize={20} minSize={15} order={1}>
         <div id="left-panel-container" className="h-full p-1">
-          {renderWidget(slots.left, 'left')}
+          {renderWidget(slots.leftTop, 'leftTop')}
         </div>
       </Panel>
 

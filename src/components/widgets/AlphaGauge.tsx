@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, XAxis, YAxis } from 'recharts';
-import { Zap, Info } from 'lucide-react';
+import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, YAxis } from 'recharts';
+import { Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMarketStore } from '../../store';
+import { useUIStore, useMarketStore } from '../../store';
 import { measureRender } from '../../lib/perf';
 import { AI_PROVIDERS } from '../../config/aiProviders';
 import { cn } from '../../lib/utils';
@@ -16,7 +16,13 @@ export const AlphaGaugeSkeleton: React.FC = React.memo(() => (
 
 const AlphaGaugeBase: React.FC = () => {
   const data = useMarketStore(state => state.alphaMetric);
+  const aiProvider = useUIStore(state => state.aiProvider);
+  const agentModels = useUIStore(state => state.agentModels);
   const [isHovered, setIsHovered] = React.useState(false);
+
+  const activeProvider = useMemo(() => 
+    AI_PROVIDERS.find(p => p.id === aiProvider.providerId) || AI_PROVIDERS[0]
+  , [aiProvider.providerId]);
 
   const regime = useMemo(() => {
     if (!data) return { label: 'N/A', color: 'text-zinc-500', bg: 'bg-zinc-500/10 border-zinc-500/20' };
@@ -40,21 +46,26 @@ const AlphaGaugeBase: React.FC = () => {
 
   const breakdownItems = useMemo(() => {
     if (!data) return [];
-    if (!data.breakdown) {
-      // Defer to default provider if breakdown is missing
-      const defaultProvider = AI_PROVIDERS[0];
-      return [
-        { label: 'Fundamentals', score: data.probability, provider: defaultProvider },
-        { label: 'Sentiment', score: data.probability, provider: defaultProvider },
-        { label: 'Risk', score: data.probability, provider: defaultProvider },
-      ];
-    }
+    
+    // Synchronize agents with their specific model assignments from Control Center
+    const getProvider = (role: 'fundamentalist' | 'sentiment' | 'risk') => {
+      const assignment = agentModels[role];
+      const providerId = assignment?.providerId || aiProvider.providerId;
+      return AI_PROVIDERS.find(p => p.id === providerId) || activeProvider;
+    };
+
+    const scores = {
+      fundamentals: data.breakdown?.fundamentals.score ?? data.probability,
+      sentiment: data.breakdown?.sentiment.score ?? data.probability,
+      risk: data.breakdown?.risk.score ?? data.probability,
+    };
+
     return [
-      { label: 'Fundamentals', ...data.breakdown.fundamentals, provider: AI_PROVIDERS.find(p => p.id === data.breakdown?.fundamentals.providerId) || AI_PROVIDERS[0] },
-      { label: 'Sentiment', ...data.breakdown.sentiment, provider: AI_PROVIDERS.find(p => p.id === data.breakdown?.sentiment.providerId) || AI_PROVIDERS[0] },
-      { label: 'Risk', ...data.breakdown.risk, provider: AI_PROVIDERS.find(p => p.id === data.breakdown?.risk.providerId) || AI_PROVIDERS[0] },
+      { label: 'Fundamentals', score: scores.fundamentals, provider: getProvider('fundamentalist') },
+      { label: 'Sentiment', score: scores.sentiment, provider: getProvider('sentiment') },
+      { label: 'Risk', score: scores.risk, provider: getProvider('risk') },
     ];
-  }, [data]);
+  }, [data, agentModels, aiProvider.providerId, activeProvider]);
 
   if (!data) return <AlphaGaugeSkeleton />;
 

@@ -1,118 +1,106 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { WebSocketClient, ConnectionState } from './WebSocketClient';
-import { useUIStore, useMarketStore, useTradeStore, useNotificationStore } from '../../store';
-import { AIProviderSelection } from '../../config/aiProviders';
-import { formatUSD } from '../../lib/formatters';
+import { useUIStore, useMarketStore, useTradeStore } from '../../store';
+import { WebSocketClient } from './WebSocketClient';
+import { MessageType } from './protocol';
+
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
 
 let clientInstance: WebSocketClient | null = null;
 
 export const useWebSocket = () => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
-  const [lastPing, setLastPing] = useState<number | null>(null);
+    const { aiProvider, jwt } = useUIStore();
+    const [isConnected, setIsConnected] = useState(false);
+    const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
+    const [lastPing, setLastPing] = useState<number>(0);
 
-  const aiProvider = useUIStore(state => state.aiProvider);
-  const updateMarket = useMarketStore(state => state.updateMarket);
-  const addWhaleMovement = useTradeStore(state => state.addWhaleMovement);
-  const addLog = useTradeStore(state => state.addLog);
-  const setAlphaMetric = useMarketStore(state => state.setAlphaMetric);
-  const updateTrade = useTradeStore(state => state.updateTrade);
-  const addToast = useNotificationStore(state => state.addToast);
-
-  useEffect(() => {
     if (!clientInstance) {
-      const url = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
-      clientInstance = new WebSocketClient(
-        url,
-        () => useUIStore.getState().jwt,
-        (state) => {
-          setConnectionState(state);
-          setIsConnected(state === 'connected');
-        }
-      );
+        clientInstance = new WebSocketClient(WS_URL, () => useUIStore.getState().jwt);
+    }
 
-      // Routing
-      clientInstance.on('MARKET_UPDATE', updateMarket);
-
-      clientInstance.on('WHALE_ALERT', (payload) => {
-        addWhaleMovement(payload);
-        // Prompt 6: Whale alert notification
-        addToast({ 
-          type: 'warning', 
-          title: 'Whale Alert', 
-          message: `${payload.amount.toLocaleString()} ${payload.asset} detected on ${payload.symbol}` 
+    useEffect(() => {
+        const client = clientInstance!;
+        
+        const unsubConnect = client.on('connected', () => {
+            setIsConnected(true);
+            setConnectionState('connected');
+            // Send initial selection
+            client.send(MessageType.SET_AI_PROVIDER, useUIStore.getState().aiProvider);
         });
-      });
 
-      clientInstance.on('AGENT_LOG', (payload) => {
-        addLog(payload);
-        // Prompt 6: Agent alert notification
-        if (payload.level === 'alert' || payload.level === 'ERROR') {
-          addToast({ 
-            type: 'agent', 
-            title: `${payload.agent} Signal`, 
-            message: payload.message.slice(0, 80) + '...',
-            duration: 6000,
-            providerId: payload.providerId
-          });
+        const unsubDisconnect = client.on('disconnected', () => {
+            setIsConnected(false);
+            setConnectionState('disconnected');
+        });
+
+        // Market Updates
+        const unsubMarket = client.on(MessageType.MARKET_UPDATE, (payload) => {
+            useMarketStore.getState().updateMarket(payload);
+        });
+
+        // Whale Alerts
+        const unsubWhale = client.on(MessageType.WHALE_ALERT, (payload) => {
+            useTradeStore.getState().addWhaleMovement(payload);
+        });
+
+        // Agent Logs
+        const unsubLog = client.on(MessageType.AGENT_LOG, (payload) => {
+            useTradeStore.getState().addLog(payload);
+        });
+
+        // Alpha Updates
+        const unsubAlpha = client.on(MessageType.ALPHA_UPDATE, (payload) => {
+            useMarketStore.getState().setAlphaMetric(payload);
+        });
+
+        // Trade Updates
+        const unsubTrade = client.on(MessageType.TRADE_UPDATE, (payload) => {
+            useTradeStore.getState().updateTrade(payload);
+        });
+
+        // PONG for lastPing
+        const unsubPong = client.on(MessageType.PONG, (payload) => {
+            setLastPing(payload.ts);
+        });
+
+        client.connect();
+
+        return () => {
+            unsubConnect();
+            unsubDisconnect();
+            unsubMarket();
+            unsubWhale();
+            unsubLog();
+            unsubAlpha();
+            unsubTrade();
+            unsubPong();
+        };
+    }, []);
+
+    // Watch aiProvider change
+    const isFirstMount = useRef(true);
+    useEffect(() => {
+        if (isFirstMount.current) {
+            isFirstMount.current = false;
+            return;
         }
-      });
-
-      clientInstance.on('ALPHA_UPDATE', setAlphaMetric);
-
-      clientInstance.on('TRADE_UPDATE', (payload) => {
-        updateTrade(payload);
-        // Prompt 6: Trade settled notification
-        if (payload.status === 'closed') {
-          addToast({ 
-            type: 'trade', 
-            title: 'Trade Settled', 
-            message: `PnL: ${formatUSD(payload.pnl)}`, 
-            duration: 8000 
-          });
+        if (clientInstance?.getState() === 'connected') {
+            clientInstance.send(MessageType.SET_AI_PROVIDER, aiProvider);
         }
-      });
+    }, [aiProvider]);
 
-      clientInstance.on('PONG', (payload) => setLastPing(payload.ts));
+    const subscribeToMarket = useCallback((symbol: string) => {
+        clientInstance?.send(MessageType.SUBSCRIBE_MARKET, { symbol });
+    }, []);
 
-      clientInstance.connect();
-    }
+    const unsubscribeFromMarket = useCallback((symbol: string) => {
+        clientInstance?.send(MessageType.UNSUBSCRIBE_MARKET, { symbol });
+    }, []);
 
-    return () => {
-      // In a real singleton, we might not disconnect on unmount
-      // but if the app unmounts completely we should.
+    return {
+        isConnected,
+        connectionState,
+        subscribeToMarket,
+        unsubscribeFromMarket,
+        lastPing
     };
-  }, []);
-
-  // Sync AI Provider change
-  useEffect(() => {
-    if (isConnected && clientInstance) {
-       clientInstance.send('SET_AI_PROVIDER', aiProvider);
-    }
-  }, [aiProvider, isConnected]);
-
-  // Reconnect on JWT change
-  const jwt = useUIStore(state => state.jwt);
-  useEffect(() => {
-    if (clientInstance) {
-      clientInstance.disconnect();
-      clientInstance.connect();
-    }
-  }, [jwt]);
-
-  const subscribeToMarket = useCallback((symbol: string) => {
-    clientInstance?.send('SUBSCRIBE_MARKET', { symbol });
-  }, []);
-
-  const unsubscribeFromMarket = useCallback((symbol: string) => {
-    clientInstance?.send('UNSUBSCRIBE_MARKET', { symbol });
-  }, []);
-
-  return {
-    isConnected,
-    connectionState,
-    subscribeToMarket,
-    unsubscribeFromMarket,
-    lastPing
-  };
 };

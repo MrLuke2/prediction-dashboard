@@ -1,82 +1,119 @@
 import { AIProviderId, AIProviderSelection } from '../../config/aiProviders';
-import { MarketPair, WhaleMovement, AlphaMetric, PnLData, LogEntry } from '../../types';
+import { MarketPair, WhaleMovement, LogEntry, AlphaMetric, PnLData } from '../../types';
 
-export type MessageType = 
-  | 'MARKET_UPDATE' 
-  | 'WHALE_ALERT' 
-  | 'AGENT_LOG' 
-  | 'ALPHA_UPDATE' 
-  | 'TRADE_UPDATE' 
-  | 'PONG' 
-  | 'ERROR'
-  | 'SUBSCRIBE_MARKET'
-  | 'UNSUBSCRIBE_MARKET'
-  | 'PING'
-  | 'SET_AI_PROVIDER';
+export enum MessageType {
+  // Server -> Client
+  MARKET_UPDATE = 'MARKET_UPDATE',
+  WHALE_ALERT = 'WHALE_ALERT',
+  AGENT_LOG = 'AGENT_LOG',
+  ALPHA_UPDATE = 'ALPHA_UPDATE',
+  TRADE_UPDATE = 'TRADE_UPDATE',
+  PONG = 'PONG',
+  ERROR = 'ERROR',
 
-export interface WSMessage<T = any> {
+  // Client -> Server
+  SUBSCRIBE_MARKET = 'SUBSCRIBE_MARKET',
+  UNSUBSCRIBE_MARKET = 'UNSUBSCRIBE_MARKET',
+  PING = 'PING',
+  SET_AI_PROVIDER = 'SET_AI_PROVIDER'
+}
+
+export interface BaseMessage {
   type: MessageType;
-  payload: T;
+  payload: any;
   ts: number;
 }
 
-// --- Payload Types ---
-
-export interface TradeUpdate {
-  symbol: string;
-  price: number;
-  size: number;
-  side: 'buy' | 'sell';
-  pnl?: number;
+// Server -> Client Messages
+export interface MarketUpdateMessage extends BaseMessage {
+  type: MessageType.MARKET_UPDATE;
+  payload: MarketPair;
 }
 
-export interface AgentLog extends LogEntry {
-  agentProvider: AIProviderId;
+export interface WhaleAlertMessage extends BaseMessage {
+  type: MessageType.WHALE_ALERT;
+  payload: WhaleMovement;
 }
 
-export interface AlphaMetricUpdate extends AlphaMetric {
-  generatedBy: AIProviderId;
+export interface AgentLogMessage extends BaseMessage {
+  type: MessageType.AGENT_LOG;
+  payload: LogEntry & { agentProvider: AIProviderId };
 }
 
-// --- Protocol Definitions ---
+export interface AlphaUpdateMessage extends BaseMessage {
+  type: MessageType.ALPHA_UPDATE;
+  payload: AlphaMetric & { generatedBy: AIProviderId };
+}
 
-export const createMessage = <T>(type: MessageType, payload: T): WSMessage<T> => ({
-  type,
-  payload,
-  ts: Date.now()
-});
+export interface TradeUpdateMessage extends BaseMessage {
+  type: MessageType.TRADE_UPDATE;
+  payload: PnLData;
+}
 
-/**
- * Basic validation schemas (mimicking Zod intent without the dependency)
- */
-export const Schemas = {
-  WSMessage: (data: any): data is WSMessage => {
-    return (
-      data &&
-      typeof data.type === 'string' &&
-      data.payload !== undefined &&
-      typeof data.ts === 'number'
-    );
-  },
-  
-  isMarketUpdate: (msg: WSMessage): msg is WSMessage<MarketPair> => 
-    msg.type === 'MARKET_UPDATE',
-  
-  isWhaleAlert: (msg: WSMessage): msg is WSMessage<WhaleMovement> => 
-    msg.type === 'WHALE_ALERT',
-    
-  isAgentLog: (msg: WSMessage): msg is WSMessage<AgentLog> => 
-    msg.type === 'AGENT_LOG',
-    
-  isAlphaUpdate: (msg: WSMessage): msg is WSMessage<AlphaMetricUpdate> => 
-    msg.type === 'ALPHA_UPDATE',
-    
-  isTradeUpdate: (msg: WSMessage): msg is WSMessage<TradeUpdate> => 
-    msg.type === 'TRADE_UPDATE',
-    
-  isPong: (msg: WSMessage): msg is WSMessage<{ ts: number }> => 
-    msg.type === 'PONG',
-    
-  isError: (msg: WSMessage): msg is WSMessage<{ code: string, message: string }> => 
-    msg.type === 'ERROR'
-};
+export interface PongMessage extends BaseMessage {
+  type: MessageType.PONG;
+  payload: { ts: number };
+}
+
+export interface ErrorMessage extends BaseMessage {
+  type: MessageType.ERROR;
+  payload: { code: string; message: string };
+}
+
+// Client -> Server Messages
+export interface SubscribeMarketMessage extends BaseMessage {
+  type: MessageType.SUBSCRIBE_MARKET | MessageType.UNSUBSCRIBE_MARKET;
+  payload: { symbol: string };
+}
+
+export interface SetAIProviderMessage extends BaseMessage {
+  type: MessageType.SET_AI_PROVIDER;
+  payload: AIProviderSelection;
+}
+
+export interface PingMessage extends BaseMessage {
+  type: MessageType.PING;
+  payload: { ts: number };
+}
+
+export type ServerMessage = 
+  | MarketUpdateMessage 
+  | WhaleAlertMessage 
+  | AgentLogMessage 
+  | AlphaUpdateMessage 
+  | TradeUpdateMessage 
+  | PongMessage 
+  | ErrorMessage;
+
+export type ClientMessage = 
+  | SubscribeMarketMessage 
+  | SetAIProviderMessage 
+  | PingMessage;
+
+// Manual Type Guards (In place of Zod)
+export function isServerMessage(data: any): data is ServerMessage {
+  return data && typeof data.type === 'string' && data.type in MessageType;
+}
+
+export function isValidPayload(type: MessageType, payload: any): boolean {
+  if (!payload) return false;
+  switch (type) {
+    case MessageType.MARKET_UPDATE:
+      return typeof payload.symbol === 'string' && typeof payload.polymarketPrice === 'number';
+    case MessageType.WHALE_ALERT:
+      return typeof payload.id === 'string' && typeof payload.symbol === 'string';
+    case MessageType.AGENT_LOG:
+      return typeof payload.id === 'string' && typeof payload.message === 'string';
+    case MessageType.ALPHA_UPDATE:
+      return typeof payload.probability === 'number';
+    case MessageType.TRADE_UPDATE:
+      return typeof payload.tradeId === 'string';
+    case MessageType.PONG:
+    case MessageType.PING:
+      return typeof payload.ts === 'number';
+    case MessageType.ERROR:
+      return typeof payload.code === 'string' && typeof payload.message === 'string';
+    default:
+      return true;
+  }
+}
