@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand Color Tokens */
+  --brand-poly-blue: #2563eb;
+  --brand-kalshi-green: #10b981;
+  --brand-kalshi-red: #f43f5e;
+  --brand-fin-bg: #09090b;
+  --brand-fin-card: #18181b;
+  --brand-fin-border: #27272a;
+  --brand-fin-hover: #3f3f46;
+  --brand-text-main: #f4f4f5;
+  --brand-text-muted: #a1a1aa;
+
+  /* Font Stack */
+  --font-mono: "JetBrains Mono", "Geist Mono", monospace;
+}
+
+@theme {
+  /* Non-prefixed versions for cleaner React code */
+  --color-poly-blue: var(--brand-poly-blue);
+  --color-kalshi-green: var(--brand-kalshi-green);
+  --color-kalshi-red: var(--brand-kalshi-red);
+  --color-fin-bg: var(--brand-fin-bg);
+  --color-fin-card: var(--brand-fin-card);
+  --color-fin-border: var(--brand-fin-border);
+  --color-fin-hover: var(--brand-fin-hover);
+  --color-text-main: var(--brand-text-main);
+  --color-text-muted: var(--brand-text-muted);
+
+  /* Brand-prefixed versions for existing CSS @apply rules */
+  --color-brand-poly-blue: var(--brand-poly-blue);
+  --color-brand-kalshi-green: var(--brand-kalshi-green);
+  --color-brand-kalshi-red: var(--brand-kalshi-red);
+  --color-brand-fin-bg: var(--brand-fin-bg);
+  --color-brand-fin-card: var(--brand-fin-card);
+  --color-brand-fin-border: var(--brand-fin-border);
+  --color-brand-fin-hover: var(--brand-fin-hover);
+  --color-brand-text-main: var(--brand-text-main);
+  --color-brand-text-muted: var(--brand-text-muted);
+
+  /* Animations */
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-glow: glow 2s ease-in-out infinite alternate;
+  --animate-ticker-scroll: ticker-scroll 20s linear infinite;
+
+  @keyframes glow {
+    0% {
+      box-shadow: 0 0 5px var(--brand-poly-blue), 0 0 10px var(--brand-poly-blue);
+    }
+    100% {
+      box-shadow: 0 0 20px var(--brand-poly-blue), 0 0 35px var(--brand-poly-blue);
+    }
+  }
+
+  @keyframes ticker-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-brand-fin-bg text-brand-text-main antialiased;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--brand-fin-card);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--brand-fin-hover);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #52525b; /* Zinc 600 */
+  }
+}
+
+@layer utilities {
+  .grid-bg-subtle {
+    background-size: 40px 40px;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  }
+
+  /* Numeric displays font optimization */
+  .font-numeric {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Accessibility: Brand Focus Ring */
+  .brand-focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-poly-blue focus:ring-offset-2 focus:ring-offset-fin-bg transition-shadow;
+  }
+}

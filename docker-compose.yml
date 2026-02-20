@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: alpha-predict-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: alpha_predict
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: alpha-predict-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: alpha-predict-backend
+    container_name: alpha-predict-backend
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://postgres:password@postgres:5432/alpha_predict
+      REDIS_URL: redis://redis:6379
+      PORT: 3001
+      JWT_SECRET: super_secret_production_key_placeholder_min_32_chars
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: npm run dev
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: alpha-predict-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+  redisdata:

@@ -1,0 +1,642 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "id": "38a36128-6c61-4f38-96e9-9c22fb7b3baf",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_login": {
+          "name": "last_login",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plan": {
+          "name": "plan",
+          "type": "user_plan",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'free'"
+        },
+        "api_key_hash": {
+          "name": "api_key_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      }
+    },
+    "market_pairs": {
+      "name": "market_pairs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "symbol": {
+          "name": "symbol",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "polymarket_slug": {
+          "name": "polymarket_slug",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kalshi_ticker": {
+          "name": "kalshi_ticker",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "market_pairs_symbol_unique": {
+          "name": "market_pairs_symbol_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "symbol"
+          ]
+        }
+      }
+    },
+    "price_snapshots": {
+      "name": "price_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "market_pair_id": {
+          "name": "market_pair_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "polymarket_price": {
+          "name": "polymarket_price",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kalshi_price": {
+          "name": "kalshi_price",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "spread": {
+          "name": "spread",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "volume_24h": {
+          "name": "volume_24h",
+          "type": "numeric(20, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "captured_at": {
+          "name": "captured_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "price_snapshots_market_pair_id_idx": {
+          "name": "price_snapshots_market_pair_id_idx",
+          "columns": [
+            "market_pair_id"
+          ],
+          "isUnique": false
+        },
+        "price_snapshots_captured_at_idx": {
+          "name": "price_snapshots_captured_at_idx",
+          "columns": [
+            "captured_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "price_snapshots_market_pair_id_market_pairs_id_fk": {
+          "name": "price_snapshots_market_pair_id_market_pairs_id_fk",
+          "tableFrom": "price_snapshots",
+          "tableTo": "market_pairs",
+          "columnsFrom": [
+            "market_pair_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "trades": {
+      "name": "trades",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "market_pair_id": {
+          "name": "market_pair_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "side": {
+          "name": "side",
+          "type": "trade_side",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "venue": {
+          "name": "venue",
+          "type": "trade_venue",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "numeric(20, 6)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entry_price": {
+          "name": "entry_price",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "exit_price": {
+          "name": "exit_price",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pnl": {
+          "name": "pnl",
+          "type": "numeric(20, 6)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "trade_status",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "tx_hash": {
+          "name": "tx_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "opened_at": {
+          "name": "opened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "trades_user_id_idx": {
+          "name": "trades_user_id_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "trades_market_pair_id_idx": {
+          "name": "trades_market_pair_id_idx",
+          "columns": [
+            "market_pair_id"
+          ],
+          "isUnique": false
+        },
+        "trades_status_idx": {
+          "name": "trades_status_idx",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        },
+        "trades_opened_at_idx": {
+          "name": "trades_opened_at_idx",
+          "columns": [
+            "opened_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "trades_user_id_users_id_fk": {
+          "name": "trades_user_id_users_id_fk",
+          "tableFrom": "trades",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "trades_market_pair_id_market_pairs_id_fk": {
+          "name": "trades_market_pair_id_market_pairs_id_fk",
+          "tableFrom": "trades",
+          "tableTo": "market_pairs",
+          "columnsFrom": [
+            "market_pair_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "whale_movements": {
+      "name": "whale_movements",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "wallet_address": {
+          "name": "wallet_address",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "market_pair_id": {
+          "name": "market_pair_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "amount_usd": {
+          "name": "amount_usd",
+          "type": "numeric(20, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direction": {
+          "name": "direction",
+          "type": "whale_direction",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "venue": {
+          "name": "venue",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tx_hash": {
+          "name": "tx_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detected_at": {
+          "name": "detected_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "whale_movements_market_pair_id_idx": {
+          "name": "whale_movements_market_pair_id_idx",
+          "columns": [
+            "market_pair_id"
+          ],
+          "isUnique": false
+        },
+        "whale_movements_detected_at_idx": {
+          "name": "whale_movements_detected_at_idx",
+          "columns": [
+            "detected_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "whale_movements_market_pair_id_market_pairs_id_fk": {
+          "name": "whale_movements_market_pair_id_market_pairs_id_fk",
+          "tableFrom": "whale_movements",
+          "tableTo": "market_pairs",
+          "columnsFrom": [
+            "market_pair_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "agent_logs": {
+      "name": "agent_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "agent_name": {
+          "name": "agent_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "agent_log_level",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "varchar(1024)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "market_pair_id": {
+          "name": "market_pair_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "agent_logs_market_pair_id_idx": {
+          "name": "agent_logs_market_pair_id_idx",
+          "columns": [
+            "market_pair_id"
+          ],
+          "isUnique": false
+        },
+        "agent_logs_created_at_idx": {
+          "name": "agent_logs_created_at_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "agent_logs_market_pair_id_market_pairs_id_fk": {
+          "name": "agent_logs_market_pair_id_market_pairs_id_fk",
+          "tableFrom": "agent_logs",
+          "tableTo": "market_pairs",
+          "columnsFrom": [
+            "market_pair_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "alpha_metrics": {
+      "name": "alpha_metrics",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "regime": {
+          "name": "regime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contributing_agents": {
+          "name": "contributing_agents",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "top_opportunity": {
+          "name": "top_opportunity",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "alpha_metrics_created_at_idx": {
+          "name": "alpha_metrics_created_at_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {
+    "user_plan": {
+      "name": "user_plan",
+      "values": {
+        "free": "free",
+        "pro": "pro",
+        "enterprise": "enterprise"
+      }
+    },
+    "trade_side": {
+      "name": "trade_side",
+      "values": {
+        "buy": "buy",
+        "sell": "sell"
+      }
+    },
+    "trade_status": {
+      "name": "trade_status",
+      "values": {
+        "open": "open",
+        "closed": "closed",
+        "failed": "failed"
+      }
+    },
+    "trade_venue": {
+      "name": "trade_venue",
+      "values": {
+        "polymarket": "polymarket",
+        "kalshi": "kalshi"
+      }
+    },
+    "whale_direction": {
+      "name": "whale_direction",
+      "values": {
+        "in": "in",
+        "out": "out"
+      }
+    },
+    "agent_log_level": {
+      "name": "agent_log_level",
+      "values": {
+        "info": "info",
+        "warn": "warn",
+        "alert": "alert"
+      }
+    }
+  },
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

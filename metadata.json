@@ -1,0 +1,5 @@
+{
+  "name": "AGENT PREDICT: War Room",
+  "description": "High-frequency trading dashboard prototype featuring a Council of Agents, real-time market data visualization, and A2UI protocol simulation.",
+  "requestFramePermissions": []
+}

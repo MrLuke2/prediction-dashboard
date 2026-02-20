@@ -1,0 +1,13 @@
+import * as dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+
+export default {
+  schema: './src/db/schema/index.ts',
+  out: './drizzle',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL,
+  },
+};
