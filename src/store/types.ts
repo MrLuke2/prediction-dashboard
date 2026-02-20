@@ -1,4 +1,5 @@
 import { MarketPair, PnLData, LogEntry, AlphaMetric, WhaleMovement } from '../types';
+import { AIProviderSelection } from '../config/aiProviders';
 
 export type MobileTab = 'overview' | 'predictions' | 'news' | 'execution' | 'radar';
 
@@ -24,6 +25,7 @@ export interface UIState {
     isSearchFocused: boolean;
     logs: LogEntry[];
     mobileTab: MobileTab;
+    aiProvider: AIProviderSelection;
     setTutorialOpen: (open: boolean) => void;
     setAuthOpen: (open: boolean) => void;
     setBooting: (booting: boolean) => void;
@@ -33,6 +35,7 @@ export interface UIState {
     setSearchFocused: (focused: boolean) => void;
     setLogs: (logs: LogEntry[]) => void;
     setMobileTab: (tab: MobileTab) => void;
+    setAIProvider: (selection: AIProviderSelection) => void;
 }
 
 export interface LayoutState {
@@ -50,6 +53,7 @@ export interface MarketState {
     setMarketData: (data: MarketPair[]) => void;
     setAlphaMetric: (metric: AlphaMetric) => void;
     setWhaleData: (data: WhaleMovement[]) => void;
+    updateMarket: (update: MarketPair) => void;
 }
 
 export interface TradeState {
@@ -59,4 +63,7 @@ export interface TradeState {
     setDisplayedPnL: (pnl: PnLData | null) => void;
     setTradeHistory: (history: PnLData[]) => void;
     setLastPnL: (pnl: PnLData | null) => void;
+    addWhaleMovement: (movement: WhaleMovement) => void;
+    addLog: (log: LogEntry) => void;
+    updateTrade: (update: any) => void;
 }

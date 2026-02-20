@@ -1,8 +1,14 @@
 import { useEffect } from 'react';
 import { useA2UISimulator } from '../services/a2uiSimulator';
 import { useUIStore, useMarketStore, useTradeStore } from '../store';
+import { useWebSocket } from '../services/websocket/useWebSocket';
 
 export const useSimulatorSync = () => {
+    const useRealData = import.meta.env.VITE_USE_REAL_DATA === 'true';
+    
+    // Initialize WebSocket if real data is enabled
+    const ws = useRealData ? useWebSocket() : null;
+
     const { logs, marketData, whaleData, alphaMetric, lastPnL, tradeHistory } = useA2UISimulator();
     
     const setLogs = useUIStore(state => state.setLogs);
@@ -10,32 +16,34 @@ export const useSimulatorSync = () => {
     const { displayedPnL, setDisplayedPnL, setTradeHistory, setLastPnL } = useTradeStore();
 
     useEffect(() => {
+        // Only sync simulator data if real data is disabled
+        if (useRealData) return;
+
         setMarketData(marketData);
-    }, [marketData, setMarketData]);
-
-    useEffect(() => {
         setLogs(logs);
-    }, [logs, setLogs]);
-
-    useEffect(() => {
         setAlphaMetric(alphaMetric);
-    }, [alphaMetric, setAlphaMetric]);
-
-    useEffect(() => {
         setWhaleData(whaleData);
-    }, [whaleData, setWhaleData]);
-
-    useEffect(() => {
         setTradeHistory(tradeHistory);
         if (!displayedPnL && tradeHistory.length > 0) setDisplayedPnL(tradeHistory[0]);
-    }, [tradeHistory, setTradeHistory, displayedPnL, setDisplayedPnL]);
-
-    useEffect(() => {
+        
         if (lastPnL) {
             setLastPnL(lastPnL);
             setDisplayedPnL(lastPnL);
         }
-    }, [lastPnL, setLastPnL, setDisplayedPnL]);
+    }, [
+        useRealData, marketData, logs, alphaMetric, whaleData, 
+        tradeHistory, lastPnL, setMarketData, setLogs, 
+        setAlphaMetric, setWhaleData, setTradeHistory, 
+        displayedPnL, setDisplayedPnL, setLastPnL
+    ]);
 
-    return { logs, marketData, whaleData, alphaMetric, lastPnL, tradeHistory };
+    return { 
+        logs, 
+        marketData, 
+        whaleData, 
+        alphaMetric, 
+        lastPnL, 
+        tradeHistory,
+        wsState: ws?.connectionState || 'offline'
+    };
 };

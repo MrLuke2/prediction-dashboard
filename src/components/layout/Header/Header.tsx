@@ -2,6 +2,7 @@ import React from 'react';
 import { LogoMark } from './LogoMark';
 import { MarketSearch } from './MarketSearch';
 import { AgentStatusBar } from './AgentStatusBar';
+import { AIProviderSelector } from '../../ui/AIProviderSelector';
 import { HeaderActions } from './HeaderActions';
 import { MarketTicker } from '../../widgets/MarketTicker';
 import { useMarketStore } from '../../../store';
@@ -18,6 +19,7 @@ export const Header: React.FC = () => {
         <div className="flex items-center space-x-2 md:space-x-4 flex-1 justify-end">
           <MarketSearch />
           <AgentStatusBar />
+          <AIProviderSelector mode="compact" />
           
           <div className="h-6 w-px bg-fin-border mx-2 hidden md:block" aria-hidden="true"></div>
           

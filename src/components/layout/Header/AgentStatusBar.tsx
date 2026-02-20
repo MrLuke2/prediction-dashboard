@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useUIStore } from '../../../store';
+import { AI_PROVIDERS } from '../../../config/aiProviders';
 
 interface Agent {
   name: string;
   status: string;
-  color: string;
   uptime: string;
   lastAction: string;
 }
 
 const AGENTS: Agent[] = [
-  { name: 'Fundamentalist', status: 'Active', color: 'bg-poly-blue', uptime: '99.99%', lastAction: 'Analyzed FOMC Minutes' },
-  { name: 'Sentiment', status: 'Parsing', color: 'bg-kalshi-green', uptime: '98.42%', lastAction: 'Scanned 4.2k X posts' },
-  { name: 'Risk', status: 'Calc', color: 'bg-kalshi-red', uptime: '100%', lastAction: 'Hedged BTC exposure' }
+  { name: 'Fundamentalist', status: 'Active', uptime: '99.99%', lastAction: 'Analyzed FOMC Minutes' },
+  { name: 'Sentiment', status: 'Parsing', uptime: '98.42%', lastAction: 'Scanned 4.2k X posts' },
+  { name: 'Risk', status: 'Calc', uptime: '100%', lastAction: 'Hedged BTC exposure' }
 ];
 
 export const AgentStatusBar: React.FC = () => {
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
+  const aiProvider = useUIStore(state => state.aiProvider);
+  const currentProvider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId) || AI_PROVIDERS[0];
 
   return (
     <div id="network-status" className="hidden lg:flex items-center space-x-2 shrink-0">
@@ -28,7 +31,13 @@ export const AgentStatusBar: React.FC = () => {
           onMouseLeave={() => setHoveredAgent(null)}
         >
           <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-fin-border whitespace-nowrap cursor-help transition-colors hover:border-zinc-600">
-            <div className={`w-2 h-2 rounded-full ${agent.color} animate-pulse shadow-[0_0_8px_rgba(var(--color-${agent.name === 'Fundamentalist' ? 'poly-blue' : (agent.name === 'Sentiment' ? 'kalshi-green' : 'kalshi-red')}-rgb),0.5)]`}></div>
+            <div 
+              className="w-2 h-2 rounded-full animate-pulse transition-colors duration-500" 
+              style={{ 
+                backgroundColor: currentProvider.color,
+                boxShadow: `0 0 8px ${currentProvider.color}`
+              }}
+            ></div>
             <span className="text-[10px] font-medium text-text-muted uppercase">
               <span className="hidden xl:inline">{agent.name}: </span>
               <span className="text-white">{agent.status}</span>
