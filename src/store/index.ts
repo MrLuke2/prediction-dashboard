@@ -5,7 +5,8 @@ import { INITIAL_MARKET_DATA } from '../constants';
 import { DEFAULT_AGENT_MODEL_CONFIG } from '../config/aiProviders';
 
 const DEFAULT_LAYOUT: LayoutSlots = {
-    left: 'newsFeed',
+    leftTop: 'newsFeed',
+    leftBottom: 'correlationHeatmap',
     centerTopLeft: 'alphaGauge',
     centerTopRight: 'btcTracker',
     centerBottomLeft: 'pnlCard',
@@ -40,7 +41,14 @@ export const useUIStore = create<UIState>()(
             setSearchFocused: (focused) => set({ isSearchFocused: focused }),
             setLogs: (logs) => set({ logs }),
             setMobileTab: (tab) => set({ mobileTab: tab }),
-            setAIProvider: (selection) => set({ aiProvider: selection }),
+            setAIProvider: (selection) => set((state) => ({ 
+                aiProvider: selection,
+                agentModels: {
+                    fundamentalist: { providerId: selection.providerId, modelId: selection.model },
+                    sentiment: { providerId: selection.providerId, modelId: selection.model },
+                    risk: { providerId: selection.providerId, modelId: selection.model }
+                }
+            })),
             setAuth: (token, user) => set({ jwt: token, user }),
             clearAuth: () => set({ jwt: null, user: null }),
             setSettingsOpen: (open) => set({ isSettingsOpen: open }),
@@ -92,7 +100,24 @@ export const useLayoutStore = create<LayoutState>()(
         }),
         {
             name: 'dashboard-layout-storage',
+            version: 2,
             storage: createJSONStorage(() => localStorage),
+            migrate: (persistedState: any, version: number) => {
+                if (version < 2 && persistedState.slots) {
+                    const oldSlots = persistedState.slots;
+                    if (oldSlots.left && !oldSlots.leftTop) {
+                        return {
+                            ...persistedState,
+                            slots: {
+                                ...oldSlots,
+                                leftTop: oldSlots.left,
+                                leftBottom: 'correlationHeatmap'
+                            }
+                        };
+                    }
+                }
+                return persistedState;
+            }
         }
     )
 );
@@ -100,7 +125,7 @@ export const useLayoutStore = create<LayoutState>()(
 export const useMarketStore = create<MarketState>((set) => ({
     marketData: INITIAL_MARKET_DATA,
     selectedMarket: null,
-    alphaMetric: { probability: 50, trend: 'stable' },
+    alphaMetric: { probability: 50, trend: 'stable', history: [] },
     whaleData: [],
     setSelectedMarket: (market) => set({ selectedMarket: market }),
     setMarketData: (data) => set({ marketData: data }),
@@ -118,6 +143,8 @@ export const useTradeStore = create<TradeState>((set) => ({
     tradeHistory: [],
     lastPnL: null,
     pendingTrade: null,
+    tradeStatus: 'ACTIVE',
+    emergencyActive: false,
     setDisplayedPnL: (pnl) => set({ displayedPnL: pnl }),
     setTradeHistory: (history) => set({ tradeHistory: history }),
     setLastPnL: (pnl) => set({ lastPnL: pnl }),
@@ -126,14 +153,18 @@ export const useTradeStore = create<TradeState>((set) => ({
     })),
     addLog: (log) => useUIStore.getState().setLogs([log, ...useUIStore.getState().logs].slice(0, 100)),
     updateTrade: (update) => {
-        // Logic for trade updates
-        console.log('[Store] Trade updated:', update);
+        set((state) => ({
+            tradeHistory: state.tradeHistory.map(t => 
+                t.tradeId === update.tradeId ? { ...t, ...update } : t
+            )
+        }));
     },
     submitTrade: (params) => {
         console.log('[Store] Submitting trade:', params);
         set({ pendingTrade: params });
-        // In a real app, this would be an API call
-    }
+    },
+    setTradeStatus: (status) => set({ tradeStatus: status }),
+    toggleEmergency: (active) => set({ emergencyActive: active }),
 }));
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();

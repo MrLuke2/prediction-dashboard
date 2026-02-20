@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Check, Bot, Sparkles, Cpu, Zap } from 'lucide-react';
 import { useUIStore, useNotificationStore } from '../../store';
 import { AI_PROVIDERS, AIProviderId, AIProviderSelection } from '../../config/aiProviders';
+import { LogLevel, AgentRole, LogEntry } from '../../types';
 import { cn } from '../../lib/utils';
 
 interface AIProviderSelectorProps {
@@ -36,6 +37,18 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
         message: `${provider.name} agents active`,
         providerId
     });
+
+    // Add technical log
+    const { logs, setLogs } = useUIStore.getState();
+    const newLog: LogEntry = {
+      id: Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toISOString(),
+      agent: AgentRole.ORCHESTRATOR,
+      message: `NEURAL PIPELINE RE-ASSIGNED TO ${provider.name.toUpperCase()} (ALL AGENTS)`,
+      level: LogLevel.SUCCESS,
+      providerId
+    };
+    setLogs([newLog, ...logs].slice(0, 100));
   };
 
   const handleModelSelect = (providerId: AIProviderId, model: string) => {
@@ -48,6 +61,18 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
         message: `${provider.name} — ${modelDetail?.name || model}`,
         providerId
     });
+
+    // Add technical log
+    const { logs, setLogs } = useUIStore.getState();
+    const newLog: LogEntry = {
+      id: Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toISOString(),
+      agent: AgentRole.ORCHESTRATOR,
+      message: `GLOBAL MODEL UPDATED: ${modelDetail?.name?.toUpperCase() || model.toUpperCase()}`,
+      level: LogLevel.SUCCESS,
+      providerId
+    };
+    setLogs([newLog, ...logs].slice(0, 100));
   };
 
   const getProviderIcon = (id: AIProviderId) => {

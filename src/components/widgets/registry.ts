@@ -1,5 +1,5 @@
 import { lazy, ComponentType } from 'react';
-import { Activity, Zap, Bitcoin, Radar, BarChart3, History, Newspaper, LucideIcon } from 'lucide-react';
+import { Activity, Zap, Bitcoin, Radar, BarChart3, History, Newspaper, LucideIcon, Binary } from 'lucide-react';
 import { WidgetType } from '../../store/types';
 
 export interface WidgetRegistryItem {
@@ -55,6 +55,13 @@ export const WIDGET_REGISTRY: Record<WidgetType, WidgetRegistryItem> = {
     defaultTitle: 'Trade History',
     icon: History,
     description: 'Historical log of executed arbitrage trades.',
+    noPadding: true
+  },
+  correlationHeatmap: {
+    component: lazy(() => import('./TacticalCorrelationHeatmap').then(m => ({ default: m.TacticalCorrelationHeatmap }))),
+    defaultTitle: 'Tactical Correlation Heatmap',
+    icon: Binary,
+    description: 'Real-time cross-asset coupling and contagion tracking.',
     noPadding: true
   }
 };

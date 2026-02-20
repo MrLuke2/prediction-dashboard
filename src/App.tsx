@@ -7,7 +7,7 @@ import { ModelConsole } from './components/layout/Header/ModelConsole';
 import { TutorialOverlay } from './components/ui/TutorialOverlay';
 import { MobileNav } from './components/layout/MobileNav';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUIStore, useMarketStore, useNotificationStore } from './store';
+import { useUIStore, useMarketStore, useNotificationStore, useTradeStore } from './store';
 import { useSimulatorSync } from './hooks/useSimulatorSync';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useConnectionStatus } from './hooks/useConnectionStatus';
@@ -17,7 +17,7 @@ import { ToastContainer } from './components/ui/Toast/ToastContainer';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useGlobalKeyboard } from './hooks/useGlobalKeyboard';
 import { measureRender, logSlowRenders } from './lib/perf';
-import { WifiOff, X } from 'lucide-react';
+import { WifiOff, X, AlertTriangle } from 'lucide-react';
 
 // Initialize performance monitoring in development
 if (process.env.NODE_ENV !== 'production') {
@@ -44,6 +44,8 @@ const AppBase: React.FC = () => {
   const setAuthOpen = useUIStore(state => state.setAuthOpen);
   const mobileTab = useUIStore(state => state.mobileTab);
   const selectedMarket = useMarketStore(state => state.selectedMarket);
+  const emergencyActive = useTradeStore(state => state.emergencyActive);
+  const tradeStatus = useTradeStore(state => state.tradeStatus);
   const handleMarketClose = useCallback(() => useMarketStore.getState().setSelectedMarket(null), []);
 
   const handleBootComplete = useCallback(() => setBooting(false), [setBooting]);
@@ -154,6 +156,28 @@ const AppBase: React.FC = () => {
         />
 
         <ModelConsole />
+
+        {/* Phase B: Emergency Standby Overlay */}
+        <AnimatePresence>
+          {emergencyActive && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[150] pointer-events-none border-[12px] border-kalshi-red shadow-[inset_0_0_150px_rgba(239,68,68,0.4)] animate-pulse"
+            >
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-950/80 backdrop-blur-xl border border-kalshi-red/50 px-8 py-4 rounded-2xl flex flex-col items-center space-y-2">
+                <div className="flex items-center space-x-3 text-kalshi-red">
+                  <AlertTriangle size={32} className="animate-bounce" />
+                  <span className="text-3xl font-black tracking-tighter uppercase italic">Neutralized</span>
+                </div>
+                <div className="text-[10px] font-mono tracking-[0.3em] text-white/50 uppercase">
+                   Trade History Overridden — Biometric Standby Active
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );

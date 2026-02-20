@@ -3,10 +3,11 @@ import { AIProviderSelection, AgentModelConfig, AgentConfigRole, AgentModelAssig
 
 export type MobileTab = 'overview' | 'predictions' | 'news' | 'execution' | 'radar';
 
-export type WidgetType = 'liveFeed' | 'alphaGauge' | 'btcTracker' | 'pnlCard' | 'tradeHistory' | 'whaleRadar' | 'newsFeed';
+export type WidgetType = 'liveFeed' | 'alphaGauge' | 'btcTracker' | 'pnlCard' | 'tradeHistory' | 'whaleRadar' | 'newsFeed' | 'correlationHeatmap';
 
 export interface LayoutSlots {
-    left: WidgetType;
+    leftTop: WidgetType;
+    leftBottom: WidgetType;
     centerTopLeft: WidgetType;
     centerTopRight: WidgetType;
     centerBottomLeft: WidgetType;
@@ -79,6 +80,8 @@ export interface TradeState {
     tradeHistory: PnLData[];
     lastPnL: PnLData | null;
     pendingTrade: TradeParams | null;
+    tradeStatus: 'ACTIVE' | 'SUSPENDED';
+    emergencyActive: boolean;
     setDisplayedPnL: (pnl: PnLData | null) => void;
     setTradeHistory: (history: PnLData[]) => void;
     setLastPnL: (pnl: PnLData | null) => void;
@@ -86,6 +89,8 @@ export interface TradeState {
     addLog: (log: LogEntry) => void;
     updateTrade: (update: any) => void;
     submitTrade: (params: TradeParams) => void;
+    setTradeStatus: (status: 'ACTIVE' | 'SUSPENDED') => void;
+    toggleEmergency: (active: boolean) => void;
 }
 
 export type ToastType = 'info' | 'success' | 'warning' | 'error' | 'trade' | 'agent';

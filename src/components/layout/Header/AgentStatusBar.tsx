@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../../../store';
-import { AI_PROVIDERS } from '../../../config/aiProviders';
+import { AI_PROVIDERS, AgentConfigRole } from '../../../config/aiProviders';
 
 interface Agent {
   name: string;
@@ -18,8 +18,15 @@ const AGENTS: Agent[] = [
 
 export const AgentStatusBar: React.FC = () => {
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
-  const aiProvider = useUIStore(state => state.aiProvider);
-  const currentProvider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId) || AI_PROVIDERS[0];
+  const agentModels = useUIStore(state => state.agentModels);
+
+  const getAgentColor = (name: string) => {
+    const roleKey = name.toLowerCase() as AgentConfigRole;
+    const assignment = (agentModels as any)[roleKey];
+    if (!assignment) return AI_PROVIDERS[0].color;
+    const provider = AI_PROVIDERS.find(p => p.id === assignment.providerId);
+    return provider?.color || AI_PROVIDERS[0].color;
+  };
 
   return (
     <div id="network-status" className="hidden lg:flex items-center space-x-2 shrink-0">
@@ -34,8 +41,8 @@ export const AgentStatusBar: React.FC = () => {
             <div 
               className="w-2 h-2 rounded-full animate-pulse transition-colors duration-500" 
               style={{ 
-                backgroundColor: currentProvider.color,
-                boxShadow: `0 0 8px ${currentProvider.color}`
+                backgroundColor: getAgentColor(agent.name),
+                boxShadow: `0 0 8px ${getAgentColor(agent.name)}`
               }}
             ></div>
             <span className="text-[10px] font-medium text-text-muted uppercase">

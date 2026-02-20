@@ -145,12 +145,12 @@ export const DraggableWidgetGrid: React.FC<DraggableWidgetGridProps> = ({ mobile
   if (isMobile) {
     const mobileWidget = useMemo(() => {
       switch (mobileTab) {
-        case 'overview': return renderSlot('left');
+        case 'overview': return renderSlot('leftTop');
+        case 'news': return renderSlot('leftBottom');
         case 'predictions': return renderSlot('centerTopLeft');
         case 'execution': return renderSlot('centerBottomLeft');
-        case 'news': return renderSlot('centerTopRight');
         case 'radar': return renderSlot('rightBottom');
-        default: return renderSlot('left');
+        default: return renderSlot('leftTop');
       }
     }, [mobileTab, slots]);
 
@@ -181,8 +181,9 @@ export const DraggableWidgetGrid: React.FC<DraggableWidgetGridProps> = ({ mobile
           title="Module Hub"
           side="left"
         >
-          <div className="p-4 h-[600px]">
-            {renderSlot('left')}
+          <div className="p-4 h-[600px] flex flex-col space-y-4">
+            <div className="flex-1">{renderSlot('leftTop')}</div>
+            <div className="flex-1">{renderSlot('leftBottom')}</div>
           </div>
         </Sheet>
 
@@ -190,9 +191,19 @@ export const DraggableWidgetGrid: React.FC<DraggableWidgetGridProps> = ({ mobile
           {/* LEFT COLUMN (Desktop Only) */}
           {isDesktop && (
             <Panel defaultSize={20} minSize={15} order={1}>
-              <div id="left-panel-container" className="h-full p-1">
-                {renderSlot('left')}
-              </div>
+              <PanelGroup direction="vertical" autoSaveId="dashboard-layout-v-left">
+                <Panel defaultSize={50} minSize={20} order={1}>
+                  <div id="left-top-panel" className="h-full p-1">
+                    {renderSlot('leftTop')}
+                  </div>
+                </Panel>
+                <ResizeHandle />
+                <Panel defaultSize={50} minSize={20} order={2}>
+                  <div id="left-bottom-panel" className="h-full p-1">
+                    {renderSlot('leftBottom')}
+                  </div>
+                </Panel>
+              </PanelGroup>
             </Panel>
           )}
 

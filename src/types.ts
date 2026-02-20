@@ -9,7 +9,8 @@ export enum LogLevel {
   INFO = 'INFO',
   WARN = 'WARN',
   ERROR = 'ERROR',
-  SUCCESS = 'SUCCESS'
+  SUCCESS = 'SUCCESS',
+  DEBATE = 'DEBATE'
 }
 
 export interface LogEntry {
@@ -42,9 +43,15 @@ export interface WhaleMovement {
   providerId?: string;
 }
 
+export interface AlphaHistoryPoint {
+  probability: number;
+  timestamp: number;
+}
+
 export interface AlphaMetric {
   probability: number; // 0-100
   trend: 'increasing' | 'decreasing' | 'stable';
+  history: AlphaHistoryPoint[];
   breakdown?: {
     fundamentals: { score: number; providerId: string };
     sentiment: { score: number; providerId: string };
@@ -57,4 +64,7 @@ export interface PnLData {
   roi: number;
   tradeId: string;
   timestamp: number;
+  venue?: 'Polymarket' | 'Kalshi' | 'Cross-Venue';
+  asset?: string;
+  executionTime?: string; // ms
 }

@@ -154,7 +154,7 @@ export const GlassPanel = ({
   return (
     <div 
       className={cn(
-        "relative bg-brand-fin-card border rounded-xl flex flex-col overflow-hidden transition-all duration-300",
+        "relative bg-brand-fin-card border rounded-xl flex flex-col transition-all duration-300",
         variantStyles[variant],
         isEditMode && "border-dashed border-zinc-600 hover:border-zinc-500",
         className

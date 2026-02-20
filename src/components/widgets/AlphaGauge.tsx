@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from 'recharts';
+import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { Zap, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMarketStore } from '../../store';
@@ -65,19 +65,43 @@ const AlphaGaugeBase: React.FC = () => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="w-full flex-1 min-h-0 relative z-10 transition-transform duration-500 group-hover:scale-105">
+      {/* Historical Alpha Frontier Sparkline */}
+      <div className="absolute inset-x-2 top-2 bottom-8 opacity-40 overflow-hidden pointer-events-none">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data.history}>
+            <defs>
+              <linearGradient id="alphaFrontier" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <Area 
+                type="monotone" 
+                dataKey="probability" 
+                stroke="#06b6d4" 
+                strokeWidth={2}
+                fillOpacity={1} 
+                fill="url(#alphaFrontier)" 
+                isAnimationActive={false}
+            />
+            <YAxis domain={[0, 100]} hide />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="w-full flex-1 min-h-0 relative z-20 transition-transform duration-500 group-hover:scale-105">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart 
-            innerRadius="80%" 
+            innerRadius="85%" 
             outerRadius="100%" 
-            barSize={14} 
+            barSize={12} 
             data={chartData} 
             startAngle={180} 
             endAngle={0}
           >
             <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
             <RadialBar
-              background={{ fill: '#18181b' }}
+              background={{ fill: 'rgba(24, 24, 27, 0.4)' }}
               dataKey="value"
               cornerRadius={10}
               isAnimationActive={true}
@@ -88,22 +112,22 @@ const AlphaGaugeBase: React.FC = () => {
         </ResponsiveContainer>
       </div>
       
-      <div className="absolute top-[60%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+      <div className="absolute bottom-[20%] left-1/2 transform -translate-x-1/2 text-center pointer-events-none z-30">
         <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="flex flex-col items-center"
         >
-            <div className={cn("px-2 py-0.5 rounded-full border text-[8px] font-black tracking-[0.2em] mb-3", regime.bg, regime.color)}>
+            <div className={cn("px-2 py-0.5 rounded-full border text-[8px] font-black tracking-[0.2em] mb-2", regime.bg, regime.color)}>
               {regime.label}
             </div>
-            <div className="text-4xl font-bold text-white tracking-tighter font-mono flex items-baseline">
+            <div className="text-5xl font-bold text-white tracking-tighter font-mono flex items-baseline leading-none">
               {data?.probability?.toFixed(0) ?? '0'}
-              <span className="text-lg text-zinc-600">%</span>
+              <span className="text-xl text-zinc-600 ml-0.5">%</span>
             </div>
-            <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-1 flex items-center space-x-1">
-              <span>Alpha Score</span>
-              <Info size={8} />
+            <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-2 flex items-center space-x-1">
+              <span>Alpha Entropy</span>
+              <Zap size={8} className="text-cyan-400 fill-cyan-400" />
             </div>
         </motion.div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { LogLevel, LogEntry } from '../../types';
-import { ChevronDown, ArrowDown, Activity, Filter, Info, AlertTriangle, AlertCircle } from 'lucide-react';
+import { ChevronDown, ArrowDown, Activity, Filter, Info, AlertTriangle, AlertCircle, MessageSquare, Swords } from 'lucide-react';
 import { useUIStore } from '../../store';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { measureRender } from '../../lib/perf';
@@ -8,7 +8,7 @@ import { LoadingSpinner, EmptyState } from '../ui/DataStates';
 import { cn } from '../../lib/utils';
 import { AI_PROVIDERS } from '../../config/aiProviders';
 
-type FilterType = 'ALL' | 'INFO' | 'WARN' | 'ERROR';
+type FilterType = 'ALL' | 'INFO' | 'WARN' | 'ERROR' | 'DEBATE';
 
 // Extracted LogItem for cleaner virtualization and memoization
 const LogItem = React.memo(({ log, idx }: { log: LogEntry, idx: number }) => {
@@ -31,6 +31,11 @@ const LogItem = React.memo(({ log, idx }: { log: LogEntry, idx: number }) => {
                 text: 'text-kalshi-red font-bold',
                 icon: <AlertCircle size={10} /> 
             };
+            case LogLevel.DEBATE: return { 
+                badge: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.2)]', 
+                text: 'text-indigo-100/90 italic font-medium',
+                icon: <MessageSquare size={10} /> 
+            };
             default: return { 
                 badge: 'bg-zinc-900 border-zinc-800 text-zinc-400', 
                 text: 'text-zinc-400',
@@ -43,7 +48,7 @@ const LogItem = React.memo(({ log, idx }: { log: LogEntry, idx: number }) => {
     
     const timeString = useMemo(() => 
         new Date(log.timestamp).toLocaleTimeString([], { 
-            hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' 
+            hour: '2-digit', minute:'2-digit', second:'2-digit', hour12: true
         }),
         [log.timestamp]
     );
@@ -65,9 +70,16 @@ const LogItem = React.memo(({ log, idx }: { log: LogEntry, idx: number }) => {
                         <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-tighter">{provider.name}</span>
                     </div>
                 </div>
-                <span className="text-zinc-600 text-[9px] font-mono">
-                    {timeString}
-                </span>
+                <div className="flex flex-col items-end">
+                    <span className="text-zinc-600 text-[9px] font-mono leading-none">
+                        {timeString}
+                    </span>
+                    {log.level === LogLevel.DEBATE && (
+                        <span className="text-indigo-500/80 uppercase text-[8px] font-black tracking-widest mt-1">
+                            COUNCIL DEBATE
+                        </span>
+                    )}
+                </div>
             </div>
             <span className={cn("text-[11px] leading-relaxed break-words", styles.text)}>
                 {log.message}
@@ -117,7 +129,7 @@ const LiveFeedBase: React.FC = () => {
         {/* Filters */}
         <div className="flex-none p-2 border-b border-fin-border bg-black/20 flex items-center justify-between">
             <div className="flex space-x-1">
-                {(['ALL', 'INFO', 'WARN', 'ERROR'] as const).map((f) => (
+                {(['ALL', 'INFO', 'WARN', 'ERROR', 'DEBATE'] as const).map((f) => (
                     <button
                         key={f}
                         onClick={() => setFilter(f)}
