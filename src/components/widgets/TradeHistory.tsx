@@ -16,8 +16,7 @@ export const TradeHistorySkeleton: React.FC = React.memo(() => (
 ));
 
 const TradeItem = React.memo(({ trade, isSelected, onSelect }: { trade: any, isSelected: boolean, onSelect: (t: any) => void }) => {
-    const handleSelect = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleSelect = useCallback(() => {
         onSelect(trade);
     }, [trade, onSelect]);
 
@@ -29,11 +28,11 @@ const TradeItem = React.memo(({ trade, isSelected, onSelect }: { trade: any, isS
     const isPositive = trade.amount >= 0;
 
     return (
-        <div 
+        <button 
             onClick={handleSelect}
             className={`
-                grid grid-cols-3 gap-2 px-4 py-3 border-b border-fin-border/50 text-[10px] font-mono items-center cursor-pointer hover:bg-white/5 transition-colors h-full
-                ${isSelected ? 'bg-white/10 text-white' : 'text-text-muted'}
+                w-full grid grid-cols-3 gap-2 px-4 py-3 border-b border-fin-border/50 text-[10px] font-mono items-center cursor-pointer transition-colors h-full text-left
+                ${isSelected ? 'bg-poly-blue/20 text-white border-l-2 border-l-poly-blue' : 'text-text-muted hover:bg-white/5'}
             `}
         >
             <div>{timestamp}</div>
@@ -41,7 +40,7 @@ const TradeItem = React.memo(({ trade, isSelected, onSelect }: { trade: any, isS
                 {isPositive ? '+' : ''}{trade.amount.toLocaleString()}
             </div>
             <div className={`text-right ${isPositive ? 'text-kalshi-green' : 'text-kalshi-red'}`}>{trade.roi}%</div>
-        </div>
+        </button>
     );
 });
 

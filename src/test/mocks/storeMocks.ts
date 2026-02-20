@@ -3,8 +3,8 @@ import { UIState, LayoutState, MarketState, TradeState, NotificationState } from
 import { INITIAL_MARKET_DATA } from '../../constants';
 
 export const mockAIProvider = { 
-  providerId: 'anthropic' as const, 
-  model: 'claude-sonnet-4-5' 
+  providerId: 'gemini' as const, 
+  model: 'gemini-2.5-flash' 
 };
 
 export const createUIState = (overrides?: Partial<UIState>): UIState => ({
@@ -17,9 +17,10 @@ export const createUIState = (overrides?: Partial<UIState>): UIState => ({
   isSearchFocused: false,
   logs: [],
   mobileTab: 'overview',
-  aiProvider: { providerId: 'anthropic', model: 'claude-sonnet-4-5' },
+  aiProvider: { providerId: 'gemini', model: 'gemini-2.5-flash' },
   jwt: null,
   user: null,
+  isSettingsOpen: false,
   setTutorialOpen: () => {},
   setAuthOpen: () => {},
   setBooting: () => {},
@@ -32,6 +33,7 @@ export const createUIState = (overrides?: Partial<UIState>): UIState => ({
   setAIProvider: () => {},
   setAuth: () => {},
   clearAuth: () => {},
+  setSettingsOpen: () => {},
   ...overrides,
 });
 
@@ -97,9 +99,10 @@ export const resetAllStores = () => {
     isSearchFocused: false,
     logs: [],
     mobileTab: 'overview',
-    aiProvider: { providerId: 'anthropic', model: 'claude-sonnet-4-5' },
+    aiProvider: { providerId: 'gemini', model: 'gemini-2.5-flash' },
     jwt: null,
     user: null,
+    isSettingsOpen: false,
   });
 
   useLayoutStore.setState({

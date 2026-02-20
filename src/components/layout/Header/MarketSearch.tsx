@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, History, X, CornerDownLeft, SearchCode } from 'lucide-react';
-import { useMarketStore } from '../../../store';
+import { useMarketStore, useUIStore } from '../../../store';
 import { MarketPair } from '../../../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../lib/utils';
@@ -10,6 +10,9 @@ const MAX_RECENT = 5;
 
 export const MarketSearch: React.FC = () => {
   const { marketData, setSelectedMarket } = useMarketStore();
+  const globalSearchQuery = useUIStore(state => state.searchQuery);
+  const setSearchQuery = useUIStore(state => state.setSearchQuery);
+  
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -18,6 +21,18 @@ export const MarketSearch: React.FC = () => {
   
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync with global store
+  useEffect(() => {
+    if (globalSearchQuery !== undefined) {
+      setQuery(globalSearchQuery);
+      if (globalSearchQuery) {
+        setIsFocused(true);
+        inputRef.current?.focus();
+      }
+    }
+  }, [globalSearchQuery]);
 
   // Load recent searches
   useEffect(() => {
@@ -111,15 +126,19 @@ export const MarketSearch: React.FC = () => {
   };
 
   return (
-    <div className="relative flex-1 max-w-md mx-4" ref={containerRef}>
+    <div id="header-search" className="relative flex-1 max-w-md mx-4" ref={containerRef}>
       <div className="relative group">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search size={14} className={cn("transition-colors", isFocused ? "text-poly-blue" : "text-zinc-500")} />
         </div>
         <input 
+          ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSearchQuery(e.target.value);
+          }}
           onFocus={() => setIsFocused(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search Markets..." 

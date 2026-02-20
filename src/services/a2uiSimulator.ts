@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LogEntry, LogLevel, AgentRole, MarketPair, WhaleMovement, AlphaMetric, PnLData } from '../types';
 import { INITIAL_MARKET_DATA, MOCK_WALLET_ADDRESSES } from '../constants';
+import { useUIStore } from '../store';
 
 // Helper to generate a mock trade for history initialization
 const generateMockTrade = (timeOffset: number): PnLData => {
@@ -28,12 +29,25 @@ export const useA2UISimulator = () => {
   ]);
 
   const addLog = useCallback((agent: AgentRole, message: string, level: LogLevel = LogLevel.INFO) => {
+    const { agentModels } = useUIStore.getState();
+    
+    // Map AgentRole enum (e.g. 'Fundamentalist') to AgentConfigRole keys (e.g. 'fundamentalist')
+    let roleKey: 'fundamentalist' | 'sentiment' | 'risk' = 'fundamentalist';
+    const agentLower = agent.toLowerCase();
+    
+    if (agentLower.includes('sentiment')) roleKey = 'sentiment';
+    else if (agentLower.includes('risk')) roleKey = 'risk';
+    else if (agentLower.includes('fundamental')) roleKey = 'fundamentalist';
+
+    const assignment = agentModels[roleKey];
+
     const newLog: LogEntry = {
       id: Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toISOString(),
       agent,
       message,
-      level
+      level,
+      providerId: assignment.providerId
     };
     setLogs(prev => [...prev.slice(-49), newLog]); // Keep last 50
   }, []);

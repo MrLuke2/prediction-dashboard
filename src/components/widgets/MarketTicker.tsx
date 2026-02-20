@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { measureRender } from '../../lib/perf';
 import { EmptyState, StaleDataBadge } from '../ui/DataStates';
 import { STALE_DATA_THRESHOLD_MS } from '../../config/constants';
+import { useUIStore } from '../../store';
 import { cn } from '../../lib/utils';
 
 interface MarketTickerProps {
@@ -46,7 +47,7 @@ const MarketTickerBase: React.FC<MarketTickerProps> = ({ data, lastUpdate }) => 
 
   return (
     <div 
-      className="w-full bg-fin-card border-b border-fin-border overflow-hidden h-12 flex items-center relative shadow-sm z-40 select-none" 
+      className="w-full bg-fin-card border-b border-fin-border overflow-hidden h-12 flex items-center relative shadow-sm z-40" 
       data-testid="market-ticker"
     >
       {isStale && <StaleDataBadge className="top-auto bottom-1 scale-75 origin-bottom-right" />}
@@ -56,12 +57,19 @@ const MarketTickerBase: React.FC<MarketTickerProps> = ({ data, lastUpdate }) => 
       
       <div className={cn(
         "flex animate-ticker-scroll whitespace-nowrap hover:[animation-play-state:paused] will-change-transform motion-reduce:animate-none motion-reduce:overflow-x-auto",
-        "custom-scrollbar"
+        "custom-scrollbar select-text"
       )}>
         {displayData.map((pair, idx) => (
-          <div key={`${pair.symbol}-${idx}`} className="flex items-center space-x-6 mx-6 text-sm group cursor-pointer">
+          <div 
+            key={`${pair.symbol}-${idx}`} 
+            onClick={(e) => {
+              e.preventDefault();
+              useUIStore.getState().setSearchQuery(pair.symbol);
+            }}
+            className="flex items-center space-x-6 mx-6 text-sm group cursor-pointer hover:scale-[1.02] transition-transform active:scale-95"
+          >
             <div className="flex flex-col">
-                <span className="text-text-muted font-bold text-xs font-mono tracking-tighter">{pair.symbol}</span>
+                <span className="text-text-muted font-bold text-xs font-mono tracking-tighter group-hover:text-white transition-colors">{pair.symbol}</span>
                 <div className="flex items-center space-x-2">
                     <span className="text-white font-medium">P: {(pair.polymarketPrice * 100).toFixed(0)}¢</span>
                     <span className="text-text-muted text-[10px]">|</span>

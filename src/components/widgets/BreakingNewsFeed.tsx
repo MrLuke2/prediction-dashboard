@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { ExternalLink, TrendingUp, AlertTriangle, Clock, Zap, BrainCircuit, ShieldAlert, BarChart3, Activity, Newspaper } from 'lucide-react';
 import { measureRender } from '../../lib/perf';
+import { useMarketStore } from '../../store';
 
 export const BreakingNewsFeedSkeleton: React.FC = React.memo(() => (
     <div className="h-full w-full flex flex-col bg-zinc-950/30">
@@ -35,6 +36,7 @@ interface NewsItem {
   volume: string;
   time: string;
   category: 'Politics' | 'Crypto' | 'Economics' | 'Pop Culture';
+  marketSymbol?: string; // Link to actual tradable market
   analysis: AnalysisData;
 }
 
@@ -48,6 +50,7 @@ const NEWS_ITEMS: NewsItem[] = [
     volume: '$450M', 
     time: '2m ago', 
     category: 'Politics',
+    marketSymbol: 'PRES-ELECTION-2024',
     analysis: {
         fundamental: "Polling averages show tightening spread in key swing states. Historical data suggests volatility spike imminent.",
         sentiment: "Social volume +45% DoD. Narrative shift detected on X toward 'Undecided Voter' impact.",
@@ -64,6 +67,7 @@ const NEWS_ITEMS: NewsItem[] = [
     volume: '$12M', 
     time: '5m ago', 
     category: 'Economics',
+    marketSymbol: 'FED-RATE-CUT',
     analysis: {
         fundamental: "CPI data came in lower than expected (2.9%). Job growth cooling effectively.",
         sentiment: "Market consensus is effectively priced in. 'Soft landing' mentions at all-time high.",
@@ -80,6 +84,7 @@ const NEWS_ITEMS: NewsItem[] = [
     volume: '$45M', 
     time: '12m ago', 
     category: 'Crypto',
+    marketSymbol: 'BTC-100K-DEC',
     analysis: {
         fundamental: "ETF inflows stabilizing. Miner capitulation phase nearing completion.",
         sentiment: "Extreme Greed index cooling off. Retail interest surprisingly low despite price action.",
@@ -144,6 +149,7 @@ const NEWS_ITEMS: NewsItem[] = [
     volume: '$32M',
     time: '2h ago',
     category: 'Crypto',
+    marketSymbol: 'ETH-ETF-FLOW',
     analysis: {
         fundamental: "SEC filings indicate productive dialogue with issuers.",
         sentiment: "Market has largely front-run this news.",
@@ -208,6 +214,7 @@ const NEWS_ITEMS: NewsItem[] = [
     volume: '$8M',
     time: '4h ago',
     category: 'Crypto',
+    marketSymbol: 'SOL-ATH-2024',
     analysis: {
         fundamental: "On-chain activity supports valuation growth.",
         sentiment: "Solana community extremely active.",
@@ -320,6 +327,7 @@ const NEWS_ITEMS: NewsItem[] = [
     volume: '$1M',
     time: '8h ago',
     category: 'Economics',
+    marketSymbol: 'US-DEBT-36T',
     analysis: {
         fundamental: "Mathematical certainty based on current deficit.",
         sentiment: "Ignored by market participants.",
@@ -416,6 +424,16 @@ const AnalysisPopup = React.memo(({ data, style, onMouseEnter, onMouseLeave }: {
     onMouseEnter: () => void,
     onMouseLeave: () => void
 }) => {
+    const { marketData, setSelectedMarket } = useMarketStore();
+
+    const handleVerdictClick = () => {
+        if (!data.marketSymbol) return;
+        const market = marketData.find((m: any) => m.symbol === data.marketSymbol);
+        if (market) {
+            setSelectedMarket(market);
+        }
+    };
+
     return createPortal(
         <div 
             className="fixed z-[9999] w-[320px] bg-zinc-950 border border-fin-border rounded-xl shadow-2xl p-0 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
@@ -463,8 +481,10 @@ const AnalysisPopup = React.memo(({ data, style, onMouseEnter, onMouseLeave }: {
                 <div className="flex items-center justify-between">
                     <div>
                         <span className="text-[10px] text-zinc-500 uppercase block mb-1">Final Verdict</span>
-                        <div className={`
-                            text-sm font-bold px-2 py-1 rounded inline-block cursor-pointer hover:scale-105 transition-transform
+                        <div 
+                            onClick={handleVerdictClick}
+                            className={`
+                            text-sm font-bold px-2 py-1 rounded inline-block cursor-pointer hover:scale-105 active:scale-95 transition-all
                             ${data.analysis.verdict === 'EXECUTE' ? 'bg-kalshi-green/20 text-kalshi-green border border-kalshi-green/30' : 
                               data.analysis.verdict === 'REJECT' ? 'bg-kalshi-red/20 text-kalshi-red border border-kalshi-red/30' : 
                               'bg-zinc-800 text-zinc-300 border border-zinc-700'}

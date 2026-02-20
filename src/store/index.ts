@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { UIState, LayoutState, MarketState, TradeState, LayoutSlots, WidgetType, NotificationState, Toast } from './types';
 import { INITIAL_MARKET_DATA } from '../constants';
+import { DEFAULT_AGENT_MODEL_CONFIG } from '../config/aiProviders';
 
 const DEFAULT_LAYOUT: LayoutSlots = {
     left: 'newsFeed',
@@ -25,9 +26,11 @@ export const useUIStore = create<UIState>()(
             isSearchFocused: false,
             logs: [],
             mobileTab: 'overview',
-            aiProvider: { providerId: 'anthropic', model: 'claude-sonnet-4-5' },
+            aiProvider: { providerId: 'gemini', model: 'gemini-2.5-flash' },
             jwt: null,
             user: null,
+            isSettingsOpen: false,
+            agentModels: DEFAULT_AGENT_MODEL_CONFIG,
             setTutorialOpen: (open) => set({ isTutorialOpen: open }),
             setAuthOpen: (open) => set({ isAuthOpen: open }),
             setBooting: (booting) => set({ isBooting: booting }),
@@ -40,16 +43,36 @@ export const useUIStore = create<UIState>()(
             setAIProvider: (selection) => set({ aiProvider: selection }),
             setAuth: (token, user) => set({ jwt: token, user }),
             clearAuth: () => set({ jwt: null, user: null }),
+            setSettingsOpen: (open) => set({ isSettingsOpen: open }),
+            setAgentModel: (role, assignment) => set((state) => ({
+                agentModels: { ...state.agentModels, [role]: assignment }
+            })),
         }),
         {
             name: 'ui-storage',
+            version: 2,
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({ 
                 aiProvider: state.aiProvider,
+                agentModels: state.agentModels,
                 mobileTab: state.mobileTab,
                 jwt: state.jwt,
                 user: state.user
             }),
+            migrate: (persistedState: any, version: number) => {
+                if (version < 2) {
+                    // Force upgrade: replace any stale Gemini model (e.g. gemini-2.0-flash) 
+                    // with the correct default gemini-2.5-flash
+                    if (persistedState?.aiProvider?.providerId === 'gemini' && 
+                        persistedState?.aiProvider?.model !== 'gemini-2.5-flash') {
+                        persistedState.aiProvider = { 
+                            providerId: 'gemini', 
+                            model: 'gemini-2.5-flash' 
+                        };
+                    }
+                }
+                return persistedState;
+            },
         }
     )
 );

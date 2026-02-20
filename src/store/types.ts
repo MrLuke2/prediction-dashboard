@@ -1,5 +1,5 @@
 import { MarketPair, PnLData, LogEntry, AlphaMetric, WhaleMovement } from '../types';
-import { AIProviderSelection } from '../config/aiProviders';
+import { AIProviderSelection, AgentModelConfig, AgentConfigRole, AgentModelAssignment } from '../config/aiProviders';
 
 export type MobileTab = 'overview' | 'predictions' | 'news' | 'execution' | 'radar';
 
@@ -30,6 +30,8 @@ export interface UIState {
     aiProvider: AIProviderSelection;
     jwt: string | null;
     user: UserProfile | null;
+    isSettingsOpen: boolean;
+    agentModels: AgentModelConfig;
     setTutorialOpen: (open: boolean) => void;
     setAuthOpen: (open: boolean) => void;
     setBooting: (booting: boolean) => void;
@@ -42,6 +44,8 @@ export interface UIState {
     setAIProvider: (selection: AIProviderSelection) => void;
     setAuth: (token: string, user: UserProfile) => void;
     clearAuth: () => void;
+    setSettingsOpen: (open: boolean) => void;
+    setAgentModel: (role: AgentConfigRole, assignment: AgentModelAssignment) => void;
 }
 
 export interface LayoutState {

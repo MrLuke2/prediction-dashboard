@@ -1,14 +1,19 @@
-import { LayoutGrid, HelpCircle, UserCircle, RotateCcw } from 'lucide-react';
+import { LayoutGrid, HelpCircle, UserCircle, RotateCcw, Settings } from 'lucide-react';
 import { useUIStore, useLayoutStore } from '../../../store';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AI_PROVIDERS } from '../../../config/aiProviders';
 
 export const HeaderActions: React.FC = () => {
   const { 
     isEditMode, setEditMode, 
     setTutorialOpen, 
     setAuthOpen,
-    setSwapSource 
+    setSwapSource,
+    setSettingsOpen,
+    aiProvider
   } = useUIStore();
+
+  const activeProvider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId);
 
   const { resetLayout } = useLayoutStore();
 
@@ -55,6 +60,28 @@ export const HeaderActions: React.FC = () => {
         <LayoutGrid size={14} className={isEditMode ? 'animate-pulse' : ''} aria-hidden="true" />
         <span className="hidden sm:inline">{isEditMode ? 'Finish Sync' : 'Edit Layout'}</span>
       </motion.button>
+
+      {/* Model Settings Button */}
+      <button 
+        id="model-settings-toggle"
+        onClick={() => setSettingsOpen(true)}
+        className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-zinc-900 border border-brand-fin-border hover:border-poly-blue/50 transition-all group"
+        aria-label="Open model control console"
+      >
+        <div className="relative">
+          <Settings size={14} className="text-zinc-400 group-hover:text-poly-blue transition-colors group-hover:rotate-45 duration-300" />
+          <div 
+            className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full border border-black animate-pulse" 
+            style={{ backgroundColor: activeProvider?.color }}
+          />
+        </div>
+        <div className="hidden md:flex flex-col items-start leading-none space-y-0.5">
+          <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Active Model</span>
+          <span className="text-[10px] font-bold text-white uppercase tracking-tighter truncate max-w-[100px]">
+            {activeProvider?.models.find(m => m.id === aiProvider.model)?.name || aiProvider.model.replace(/-/g, ' ')}
+          </span>
+        </div>
+      </button>
 
       {/* Tutorial Button */}
       <button 

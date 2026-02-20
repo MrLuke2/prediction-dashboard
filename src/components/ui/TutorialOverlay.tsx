@@ -43,7 +43,13 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ steps, isOpen,
     if (step) {
       const element = document.getElementById(step.targetId);
       if (element) {
-        setTargetRect(element.getBoundingClientRect());
+        // Ensure element is visible
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Update rect after a tiny delay for scroll/animation
+        setTimeout(() => {
+          setTargetRect(element.getBoundingClientRect());
+        }, 100);
       }
     }
   };

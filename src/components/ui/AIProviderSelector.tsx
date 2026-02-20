@@ -29,7 +29,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
 
   const handleProviderSelect = (providerId: AIProviderId) => {
     const provider = AI_PROVIDERS.find(p => p.id === providerId)!;
-    setAIProvider({ providerId, model: provider.defaultModel });
+    setAIProvider({ providerId, model: provider.defaultModelId });
     addToast({
         type: 'agent',
         title: 'Agent Synchronized',
@@ -40,11 +40,12 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
 
   const handleModelSelect = (providerId: AIProviderId, model: string) => {
     const provider = AI_PROVIDERS.find(p => p.id === providerId)!;
+    const modelDetail = provider.models.find(m => m.id === model);
     setAIProvider({ providerId, model });
     addToast({
         type: 'agent',
         title: 'Model Updated',
-        message: `${provider.name} model: ${model}`,
+        message: `${provider.name} — ${modelDetail?.name || model}`,
         providerId
     });
   };
@@ -71,7 +72,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
             style={{ backgroundColor: currentProvider.color }}
           />
           <span className="text-[10px] font-bold text-white uppercase tracking-tight">
-            {currentProvider.name} <span className="text-text-muted font-normal ml-1">/ {aiProvider.model}</span>
+            {currentProvider.name} <span className="text-text-muted font-normal ml-1">/ {currentProvider.models.find(m => m.id === aiProvider.model)?.name || aiProvider.model}</span>
           </span>
           <ChevronDown size={12} className={cn("text-text-muted transition-transform", isOpen && "rotate-180")} />
         </button>
@@ -119,7 +120,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
                           className="w-full bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 rounded px-2 py-1 focus:outline-none focus:border-zinc-600"
                         >
                           {provider.models.map(model => (
-                            <option key={model} value={model}>{model}</option>
+                            <option key={model.id} value={model.id}>{model.name}</option>
                           ))}
                         </select>
                       </div>
@@ -169,12 +170,12 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
           <div onClick={(e) => e.stopPropagation()}>
             <label className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-2 block">Model Intelligence</label>
             <select
-              value={aiProvider.providerId === provider.id ? aiProvider.model : provider.defaultModel}
+              value={aiProvider.providerId === provider.id ? aiProvider.model : provider.defaultModelId}
               onChange={(e) => handleModelSelect(provider.id, e.target.value)}
               className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-600"
             >
               {provider.models.map(model => (
-                <option key={model} value={model}>{model}</option>
+                <option key={model.id} value={model.id}>{model.name}</option>
               ))}
             </select>
           </div>

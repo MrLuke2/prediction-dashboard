@@ -15,8 +15,8 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     targetId: 'market-ticker',
-    title: 'Live Spreads',
-    description: 'Real-time arbitrage ticker monitoring price discrepancies between regulated (Kalshi) and unregulated (Polymarket) exchanges.',
+    title: 'Live Spreads — Click to Search',
+    description: 'Real-time arbitrage ticker. Hover to pause and copy text. Click any market name (e.g. TRUMP-FED-NOMINEE) to instantly populate the search bar and begin intelligence analysis.',
     position: 'bottom'
   },
   {
@@ -40,7 +40,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     targetId: 'center-bottom-left-panel',
     title: 'Execution Monitor',
-    description: 'Live visualization of trade execution, PnL realization, and settlement confirmation on Polygon.',
+    description: 'Live visualization of trade execution, PnL realization, and settlement confirmation on Polygon. Click any trade in Trade History to view its details here.',
     position: 'top'
   },
   {
@@ -52,13 +52,25 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     targetId: 'right-bottom-panel',
     title: 'Agent Activity Feed',
-    description: 'Transparency logs showing the decision-making process of the Fundamentalist, Sentiment, and Risk agents.',
+    description: 'Transparency logs showing the decision-making process of the Fundamentalist, Sentiment, and Risk agents. Reflects the currently selected AI model.',
     position: 'left'
+  },
+  {
+    targetId: 'model-settings-toggle',
+    title: 'Model Command Console',
+    description: 'Open the settings panel to switch AI models globally. See reasoning depth, latency, and cost for each model. The system defaults to Gemini 2.5 Flash for optimal speed-to-cost ratio.',
+    position: 'bottom'
   },
   {
     targetId: 'layout-toggle',
     title: 'Customize Workspace',
     description: 'The entire dashboard is modular. Click here to enter "Edit Mode" to resize panels or swap widgets to fit your trading style.',
+    position: 'bottom'
+  },
+  {
+    targetId: 'header-search',
+    title: 'Intelligence Deep-Dive',
+    description: 'Try it now! Click a market in the ticker or search for one. This opens the Intelligence Report — walk through Overview, Analysis, Whale Activity, and Execute tabs. On the Execute tab, use "Back to Dashboard" to return here.',
     position: 'bottom'
   }
 ];

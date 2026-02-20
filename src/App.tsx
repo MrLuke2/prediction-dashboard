@@ -3,6 +3,7 @@ import { DraggableWidgetGrid } from './components/layout/DraggableWidgetGrid';
 import { BootSequence } from './components/layout/BootSequence';
 import { UltimateInsightsCard } from './components/widgets/UltimateInsightsCard';
 import { AuthModal } from './components/ui/AuthModal';
+import { ModelConsole } from './components/layout/Header/ModelConsole';
 import { TutorialOverlay } from './components/ui/TutorialOverlay';
 import { MobileNav } from './components/layout/MobileNav';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,10 +62,12 @@ const AppBase: React.FC = () => {
     }
     const provider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId);
     if (provider) {
+      const modelDetail = provider.models.find(m => m.id === aiProvider.model);
+      const modelName = modelDetail?.name || aiProvider.model;
       addToast({ 
         type: 'agent', 
         title: 'AI Provider Switched', 
-        message: `Now using ${provider.name} ${aiProvider.model}`,
+        message: `Now using ${provider.name} — ${modelName}`,
         duration: 3000,
         providerId: provider.id
       });
@@ -149,6 +152,8 @@ const AppBase: React.FC = () => {
           isOpen={isTutorialOpen} 
           onClose={handleTutorialClose} 
         />
+
+        <ModelConsole />
       </div>
     </>
   );

@@ -34,6 +34,14 @@ const KALSHI_LOGO = (
 
 const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market, onClose }: UltimateInsightsCardProps) => {
   const [activeTab, setActiveTab] = useState<TabType>('OVERVIEW');
+  
+  // Auto-switch to EXECUTE if market has high spread/probability (simulating alpha discovery)
+  useEffect(() => {
+    if (market.spread > 0.03 && activeTab === 'OVERVIEW') {
+        setActiveTab('EXECUTE');
+    }
+  }, [market.symbol]);
+
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [size, setSize] = useState<string>('100');
   const [isExecuting, setIsExecuting] = useState(false);
@@ -343,7 +351,7 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
                     {AI_PROVIDERS.map(p => (
                         <button 
                             key={p.id}
-                            onClick={() => setAIProvider({ providerId: p.id, model: p.defaultModel })}
+                            onClick={() => setAIProvider({ providerId: p.id, model: p.defaultModelId })}
                             className={`p-2 rounded-lg border flex flex-col items-center justify-center transition-all ${
                                 currentAISelection.providerId === p.id 
                                 ? 'bg-zinc-800 border-white/20' 
@@ -403,6 +411,16 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
                 )}
             </div>
         )}
+
+        <div className="pt-4 flex justify-center">
+            <button 
+                onClick={onClose}
+                className="text-zinc-500 hover:text-zinc-300 text-[10px] font-black tracking-[0.2em] uppercase transition-all bg-transparent border-none p-2 flex items-center space-x-2 group"
+            >
+                <span>Back to Dashboard</span>
+                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+        </div>
     </div>
   );
 

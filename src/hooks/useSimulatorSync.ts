@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useA2UISimulator } from '../services/a2uiSimulator';
 import { useUIStore, useMarketStore, useTradeStore } from '../store';
 import { useWebSocket } from '../services/websocket/useWebSocket';
@@ -15,6 +15,8 @@ export const useSimulatorSync = () => {
     const { setMarketData, setAlphaMetric, setWhaleData } = useMarketStore();
     const { displayedPnL, setDisplayedPnL, setTradeHistory, setLastPnL } = useTradeStore();
 
+    const lastTradeRef = useRef<string>('');
+
     useEffect(() => {
         // Only sync simulator data if real data is disabled
         if (useRealData) return;
@@ -24,9 +26,15 @@ export const useSimulatorSync = () => {
         setAlphaMetric(alphaMetric);
         setWhaleData(whaleData);
         setTradeHistory(tradeHistory);
-        if (!displayedPnL && tradeHistory.length > 0) setDisplayedPnL(tradeHistory[0]);
         
-        if (lastPnL) {
+        // Initial auto-selection if none exists
+        if (!displayedPnL && tradeHistory.length > 0) {
+            setDisplayedPnL(tradeHistory[0]);
+        }
+        
+        // Only auto-switch display if a NEW trade just occurred
+        if (lastPnL && lastPnL.tradeId !== lastTradeRef.current) {
+            lastTradeRef.current = lastPnL.tradeId;
             setLastPnL(lastPnL);
             setDisplayedPnL(lastPnL);
         }

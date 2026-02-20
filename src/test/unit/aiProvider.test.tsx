@@ -18,7 +18,8 @@ describe('AI Providers Config', () => {
   it('should have valid models array for each provider', () => {
     AI_PROVIDERS.forEach(provider => {
       expect(provider.models.length).toBeGreaterThan(0);
-      expect(provider.models).toContain(provider.defaultModel);
+      const modelIds = provider.models.map(m => m.id);
+      expect(modelIds).toContain(provider.defaultModelId);
     });
   });
 });
