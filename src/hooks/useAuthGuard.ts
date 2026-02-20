@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useUIStore } from '../store';
+import { useUIStore, useNotificationStore } from '../store';
 
 /**
  * Hook to enforce authentication and handle authorization checks.
@@ -8,6 +8,7 @@ export const useAuthGuard = () => {
   const jwt = useUIStore(state => state.jwt);
   const user = useUIStore(state => state.user);
   const setAuthOpen = useUIStore(state => state.setAuthOpen);
+  const addToast = useNotificationStore(state => state.addToast);
 
   const requireAuth = useCallback(() => {
     if (!jwt) {
@@ -25,13 +26,16 @@ export const useAuthGuard = () => {
     const requiredWeight = plans.indexOf(requiredPlan);
 
     if (currentWeight < requiredWeight) {
-      // Logic for upgrade prompt would go here
-      console.warn(`[AuthGuard] Access denied. Plan ${requiredPlan} required.`);
+      addToast({
+        type: 'warning',
+        title: 'Pro Mode Required',
+        message: `Plan ${requiredPlan} required for this operation.`
+      });
       return false;
     }
     
     return true;
-  }, [requireAuth, user?.plan]);
+  }, [requireAuth, user?.plan, addToast]);
 
   return { 
     requireAuth, 

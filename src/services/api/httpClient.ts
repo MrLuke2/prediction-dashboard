@@ -38,19 +38,32 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const response = await fetch(`${BASE_URL}${path}`, config);
 
-  if (response.status === 401 && path !== '/auth/refresh' && path !== '/auth/login') {
+  if (response.status === 401 && path !== '/auth/refresh' && path !== '/auth/login' && path !== '/auth/register') {
     // Attempt refresh
     try {
-      const refreshed = await httpClient.post<{ token: string }>('/auth/refresh');
-      if (refreshed.token) {
-        useUIStore.getState().setAuth(refreshed.token, useUIStore.getState().user!);
+      const refreshed = await httpClient.post<any>('/auth/refresh');
+      if (refreshed.token && refreshed.user) {
+        useUIStore.getState().setAuth(refreshed.token, refreshed.user);
+        
         // Retry original request
-        headers.set('Authorization', `Bearer ${refreshed.token}`);
-        const retryResponse = await fetch(`${BASE_URL}${path}`, config);
-        if (retryResponse.ok) return await retryResponse.json();
+        const retryHeaders = new Headers(headers);
+        retryHeaders.set('Authorization', `Bearer ${refreshed.token}`);
+        const retryResponse = await fetch(`${BASE_URL}${path}`, {
+          ...config,
+          headers: retryHeaders,
+        });
+        
+        if (!retryResponse.ok) {
+           const errorData = await retryResponse.json().catch(() => ({}));
+           throw new ApiError(errorData.message || 'Retry failed', retryResponse.status, errorData.code);
+        }
+        
+        if (retryResponse.status === 204) return {} as T;
+        return await retryResponse.json();
       }
     } catch (e) {
       useUIStore.getState().clearAuth();
+      throw e;
     }
   }
 

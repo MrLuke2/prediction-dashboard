@@ -30,6 +30,7 @@ export const useUIStore = create<UIState>()(
             aiProvider: { providerId: 'gemini', model: 'gemini-2.5-flash' },
             jwt: null,
             user: null,
+            isAuthenticated: false,
             isSettingsOpen: false,
             agentModels: {
                 fundamentalist: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
@@ -53,8 +54,8 @@ export const useUIStore = create<UIState>()(
                     risk: { providerId: selection.providerId, modelId: selection.model }
                 }
             })),
-            setAuth: (token, user) => set({ jwt: token, user }),
-            clearAuth: () => set({ jwt: null, user: null }),
+            setAuth: (token, user) => set({ jwt: token, user, isAuthenticated: !!token }),
+            clearAuth: () => set({ jwt: null, user: null, isAuthenticated: false }),
             setSettingsOpen: (open) => set({ isSettingsOpen: open }),
             setAgentModel: (role, assignment) => set((state) => ({
                 agentModels: { ...state.agentModels, [role]: assignment }
@@ -69,7 +70,8 @@ export const useUIStore = create<UIState>()(
                 agentModels: state.agentModels,
                 mobileTab: state.mobileTab,
                 jwt: state.jwt,
-                user: state.user
+                user: state.user,
+                isAuthenticated: state.isAuthenticated
             }),
             migrate: (persistedState: any, version: number) => {
                 if (version < 3) {

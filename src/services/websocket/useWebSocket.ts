@@ -65,6 +65,7 @@ export const useWebSocket = () => {
         client.connect();
 
         return () => {
+            client.disconnect();
             unsubConnect();
             unsubDisconnect();
             unsubMarket();
@@ -74,7 +75,7 @@ export const useWebSocket = () => {
             unsubTrade();
             unsubPong();
         };
-    }, []);
+    }, [jwt]);
 
     // Watch aiProvider change
     const isFirstMount = useRef(true);

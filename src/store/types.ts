@@ -31,6 +31,7 @@ export interface UIState {
     aiProvider: AIProviderSelection;
     jwt: string | null;
     user: UserProfile | null;
+    isAuthenticated: boolean;
     isSettingsOpen: boolean;
     agentModels: AgentModelConfig;
     setTutorialOpen: (open: boolean) => void;

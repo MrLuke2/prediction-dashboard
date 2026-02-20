@@ -237,7 +237,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <div className="flex items-center space-x-1.5 pl-1.5 border-l border-zinc-700">
                 <span style={{ color: currentProvider.color }}>{providerIcon(currentProvider.id)}</span>
                 <span className="text-[10px] font-bold text-white uppercase tracking-tighter">{currentProvider.name}</span>
-                <span className="text-zinc-600 text-[10px]">{currentProvider.models.find(m => m.id === aiProvider.model)?.name || aiProvider.model}</span>
+                <span className="text-zinc-600 text-[10px]">{currentProvider.models.find(m => m === aiProvider.model) || aiProvider.model}</span>
               </div>
             </div>
             <div className="flex items-center justify-center text-[10px] text-zinc-600 space-x-1">
