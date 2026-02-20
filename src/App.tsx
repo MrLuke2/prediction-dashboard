@@ -6,11 +6,13 @@ import { AuthModal } from './components/ui/AuthModal';
 import { TutorialOverlay } from './components/ui/TutorialOverlay';
 import { MobileNav } from './components/layout/MobileNav';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUIStore, useMarketStore } from './store';
+import { useUIStore, useMarketStore, useNotificationStore } from './store';
 import { useSimulatorSync } from './hooks/useSimulatorSync';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useConnectionStatus } from './hooks/useConnectionStatus';
 import { TUTORIAL_STEPS } from './config/tutorialSteps';
+import { AI_PROVIDERS } from './config/aiProviders';
+import { ToastContainer } from './components/ui/Toast/ToastContainer';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useGlobalKeyboard } from './hooks/useGlobalKeyboard';
 import { measureRender, logSlowRenders } from './lib/perf';
@@ -40,13 +42,34 @@ const AppBase: React.FC = () => {
   const isAuthOpen = useUIStore(state => state.isAuthOpen);
   const setAuthOpen = useUIStore(state => state.setAuthOpen);
   const mobileTab = useUIStore(state => state.mobileTab);
-
   const selectedMarket = useMarketStore(state => state.selectedMarket);
   const handleMarketClose = useCallback(() => useMarketStore.getState().setSelectedMarket(null), []);
 
   const handleBootComplete = useCallback(() => setBooting(false), [setBooting]);
   const handleAuthClose = useCallback(() => setAuthOpen(false), [setAuthOpen]);
   const handleTutorialClose = useCallback(() => setTutorialOpen(false), [setTutorialOpen]);
+
+  // Prompt 6: AI Provider change notification
+  const aiProvider = useUIStore(state => state.aiProvider);
+  const addToast = useNotificationStore(state => state.addToast);
+  const isFirstMount = React.useRef(true);
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    const provider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId);
+    if (provider) {
+      addToast({ 
+        type: 'agent', 
+        title: 'AI Provider Switched', 
+        message: `Now using ${provider.name} ${aiProvider.model}`,
+        duration: 3000,
+        providerId: provider.id
+      });
+    }
+  }, [aiProvider, addToast]);
 
   // Reset banner visibility when back online
   useEffect(() => {
@@ -106,6 +129,8 @@ const AppBase: React.FC = () => {
         {!isBooting && <MobileNav />}
 
         {/* Global Overlays */}
+        <ToastContainer />
+
         <AnimatePresence>
           {isAuthOpen && <AuthModal isOpen={isAuthOpen} onClose={handleAuthClose} />}
         </AnimatePresence>

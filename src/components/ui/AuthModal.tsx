@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Mail, ShieldCheck, Lock, Loader2, Bot, Zap, Sparkles, Cpu } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { useUIStore } from '../../store';
+import { useUIStore, useNotificationStore } from '../../store';
 import { authApi } from '../../services/api/authApi';
 import { AI_PROVIDERS } from '../../config/aiProviders';
 import { cn } from '../../lib/utils';
@@ -68,6 +68,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         : await authApi.register(email, password);
       
       setAuth(response.token, response.user);
+      
+      // Prompt 6: Login success toast
+      useNotificationStore.getState().addToast({
+        type: 'success',
+        title: 'Access Granted',
+        message: `Welcome back — ${currentProvider.name} agents active`
+      });
+
       onClose();
     } catch (err: any) {
       setError(err.message || 'Authentication failed');

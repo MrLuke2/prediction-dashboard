@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { WebSocketClient, ConnectionState } from './WebSocketClient';
-import { useUIStore, useMarketStore, useTradeStore } from '../../store';
+import { useUIStore, useMarketStore, useTradeStore, useNotificationStore } from '../../store';
 import { AIProviderSelection } from '../../config/aiProviders';
+import { formatUSD } from '../../lib/formatters';
 
 let clientInstance: WebSocketClient | null = null;
 
@@ -16,6 +17,7 @@ export const useWebSocket = () => {
   const addLog = useTradeStore(state => state.addLog);
   const setAlphaMetric = useMarketStore(state => state.setAlphaMetric);
   const updateTrade = useTradeStore(state => state.updateTrade);
+  const addToast = useNotificationStore(state => state.addToast);
 
   useEffect(() => {
     if (!clientInstance) {
@@ -31,10 +33,46 @@ export const useWebSocket = () => {
 
       // Routing
       clientInstance.on('MARKET_UPDATE', updateMarket);
-      clientInstance.on('WHALE_ALERT', addWhaleMovement);
-      clientInstance.on('AGENT_LOG', addLog);
+
+      clientInstance.on('WHALE_ALERT', (payload) => {
+        addWhaleMovement(payload);
+        // Prompt 6: Whale alert notification
+        addToast({ 
+          type: 'warning', 
+          title: 'Whale Alert', 
+          message: `${payload.amount.toLocaleString()} ${payload.asset} detected on ${payload.symbol}` 
+        });
+      });
+
+      clientInstance.on('AGENT_LOG', (payload) => {
+        addLog(payload);
+        // Prompt 6: Agent alert notification
+        if (payload.level === 'alert' || payload.level === 'ERROR') {
+          addToast({ 
+            type: 'agent', 
+            title: `${payload.agent} Signal`, 
+            message: payload.message.slice(0, 80) + '...',
+            duration: 6000,
+            providerId: payload.providerId
+          });
+        }
+      });
+
       clientInstance.on('ALPHA_UPDATE', setAlphaMetric);
-      clientInstance.on('TRADE_UPDATE', updateTrade);
+
+      clientInstance.on('TRADE_UPDATE', (payload) => {
+        updateTrade(payload);
+        // Prompt 6: Trade settled notification
+        if (payload.status === 'closed') {
+          addToast({ 
+            type: 'trade', 
+            title: 'Trade Settled', 
+            message: `PnL: ${formatUSD(payload.pnl)}`, 
+            duration: 8000 
+          });
+        }
+      });
+
       clientInstance.on('PONG', (payload) => setLastPing(payload.ts));
 
       clientInstance.connect();

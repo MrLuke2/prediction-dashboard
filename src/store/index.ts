@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { UIState, LayoutState, MarketState, TradeState, LayoutSlots, WidgetType } from './types';
+import { UIState, LayoutState, MarketState, TradeState, LayoutSlots, WidgetType, NotificationState, Toast } from './types';
 import { INITIAL_MARKET_DATA } from '../constants';
 
 const DEFAULT_LAYOUT: LayoutSlots = {
@@ -111,4 +111,53 @@ export const useTradeStore = create<TradeState>((set) => ({
         set({ pendingTrade: params });
         // In a real app, this would be an API call
     }
+}));
+
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
+export const useNotificationStore = create<NotificationState>((set, get) => ({
+    toasts: [],
+    addToast: (toast) => {
+        const id = Math.random().toString(36).substring(2, 9);
+        const duration = toast.duration ?? 4000;
+
+        set((state) => {
+            const newToasts = [{ ...toast, id } as Toast, ...state.toasts].slice(0, 5);
+            
+            // Cleanup timeouts for any toast that was sliced off
+            const currentIds = new Set(newToasts.map(t => t.id));
+            state.toasts.forEach(t => {
+                if (!currentIds.has(t.id)) {
+                    const timeout = toastTimeouts.get(t.id);
+                    if (timeout) clearTimeout(timeout);
+                    toastTimeouts.delete(t.id);
+                }
+            });
+
+            return { toasts: newToasts };
+        });
+
+        if (duration !== Infinity) {
+            const timeout = setTimeout(() => {
+                get().dismissToast(id);
+            }, duration);
+            toastTimeouts.set(id, timeout);
+        }
+
+        return id;
+    },
+    dismissToast: (id) => {
+        const timeout = toastTimeouts.get(id);
+        if (timeout) clearTimeout(timeout);
+        toastTimeouts.delete(id);
+
+        set((state) => ({
+            toasts: state.toasts.filter((t) => t.id !== id),
+        }));
+    },
+    clearAll: () => {
+        toastTimeouts.forEach((t) => clearTimeout(t));
+        toastTimeouts.clear();
+        set({ toasts: [] });
+    },
 }));

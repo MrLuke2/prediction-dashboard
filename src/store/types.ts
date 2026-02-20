@@ -83,3 +83,25 @@ export interface TradeState {
     updateTrade: (update: any) => void;
     submitTrade: (params: TradeParams) => void;
 }
+
+export type ToastType = 'info' | 'success' | 'warning' | 'error' | 'trade' | 'agent';
+
+export interface Toast {
+    id: string;
+    type: ToastType;
+    title: string;
+    message?: string;
+    duration?: number;
+    action?: {
+        label: string;
+        onClick: () => void;
+    };
+    providerId?: string; // For styling 'agent' toasts
+}
+
+export interface NotificationState {
+    toasts: Toast[];
+    addToast: (toast: Omit<Toast, 'id'>) => string;
+    dismissToast: (id: string) => void;
+    clearAll: () => void;
+}
