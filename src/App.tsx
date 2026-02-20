@@ -110,22 +110,21 @@ const AppBase: React.FC = () => {
 
         {/* Connection Status Banner */}
         {!isOnline && showOfflineBanner && !isBooting && (
-          <div className="fixed bottom-16 md:bottom-4 left-0 right-0 z-[100] px-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="max-w-[1900px] mx-auto">
-              <div className="bg-amber-500/95 backdrop-blur-md text-black px-4 py-2 rounded-lg flex items-center justify-between shadow-lg border border-amber-400/50">
-                <div className="flex items-center space-x-3">
-                  <WifiOff size={16} className="text-black/70" />
-                  <span className="text-sm font-semibold tracking-tight">
-                    Connection lost — data may be stale
-                  </span>
-                </div>
-                <button 
-                  onClick={() => setShowOfflineBanner(false)}
-                  className="p-1 hover:bg-black/10 rounded-full transition-colors"
-                >
-                  <X size={16} />
-                </button>
+          <div className="fixed bottom-16 left-0 right-0 z-[100] animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-amber-500 text-black px-4 py-1.5 flex items-center justify-between shadow-lg">
+              <div className="flex items-center space-x-3">
+                <WifiOff size={14} className="text-black/70" />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  Connection lost — data may be stale
+                </span>
               </div>
+              <button 
+                onClick={() => setShowOfflineBanner(false)}
+                className="p-1 hover:bg-black/10 rounded-full transition-colors"
+                aria-label="Dismiss"
+              >
+                <X size={14} />
+              </button>
             </div>
           </div>
         )}

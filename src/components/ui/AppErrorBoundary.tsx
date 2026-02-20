@@ -20,11 +20,11 @@ export class AppErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('[AppErrorBoundary] Uncaught error:', error, errorInfo);
+      console.error('[ErrorBoundary] Uncaught error:', error);
     } else {
-      reportError(error, errorInfo);
+      reportError(error);
     }
   }
 
