@@ -1,32 +1,45 @@
-import React, { useEffect, useRef, useCallback, useMemo } from 'react';
-import { LogLevel } from '../../types';
-import { Terminal, Circle, Activity } from 'lucide-react';
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+import { LogLevel, LogEntry } from '../../types';
+import { ChevronDown, ArrowDown, Activity, Filter, Info, AlertTriangle, AlertCircle } from 'lucide-react';
 import { useUIStore } from '../../store';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { measureRender } from '../../lib/perf';
+import { LoadingSpinner, EmptyState } from '../ui/DataStates';
+import { cn } from '../../lib/utils';
+import { AI_PROVIDERS } from '../../config/aiProviders';
 
-export const LiveFeedSkeleton: React.FC = React.memo(() => (
-    <div className="h-full flex flex-col items-center justify-center p-8 space-y-4 bg-zinc-950/30">
-        <Activity className="text-zinc-800 animate-pulse" size={32} />
-        <div className="w-full space-y-2">
-            {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-8 bg-zinc-900/50 rounded animate-pulse" style={{ opacity: 1 - i * 0.15 }}></div>
-            ))}
-        </div>
-    </div>
-));
+type FilterType = 'ALL' | 'INFO' | 'WARN' | 'ERROR';
 
 // Extracted LogItem for cleaner virtualization and memoization
-const LogItem = React.memo(({ log, idx, styles }: { log: any, idx: number, styles: any }) => {
-    const isEven = idx % 2 === 0;
+const LogItem = React.memo(({ log, idx }: { log: LogEntry, idx: number }) => {
+    const provider = AI_PROVIDERS.find(p => p.id === log.providerId) || AI_PROVIDERS[0];
     
-    // memoized derived values for performance
-    const isKalshiAction = useMemo(() => 
-        log.message.toLowerCase().includes('kalshi'),
-        [log.message]
-    );
-    
-    const messageColor = isKalshiAction ? 'text-kalshi-green' : styles.color;
+    const getLevelStyles = (level: LogLevel) => {
+        switch (level) {
+            case LogLevel.INFO: return { 
+                badge: 'bg-zinc-900 border-zinc-800 text-zinc-400', 
+                text: 'text-zinc-300',
+                icon: <Info size={10} /> 
+            };
+            case LogLevel.WARN: return { 
+                badge: 'bg-amber-500/10 border-amber-500/20 text-amber-500', 
+                text: 'text-amber-200/90',
+                icon: <AlertTriangle size={10} /> 
+            };
+            case LogLevel.ERROR: return { 
+                badge: 'bg-kalshi-red/10 border-kalshi-red/20 text-kalshi-red animate-pulse', 
+                text: 'text-kalshi-red font-bold',
+                icon: <AlertCircle size={10} /> 
+            };
+            default: return { 
+                badge: 'bg-zinc-900 border-zinc-800 text-zinc-400', 
+                text: 'text-zinc-400',
+                icon: <Info size={10} /> 
+            };
+        }
+    };
+
+    const styles = getLevelStyles(log.level);
     
     const timeString = useMemo(() => 
         new Date(log.timestamp).toLocaleTimeString([], { 
@@ -36,16 +49,27 @@ const LogItem = React.memo(({ log, idx, styles }: { log: any, idx: number, style
     );
 
     return (
-        <div className={`flex flex-col py-3 px-4 border-b border-fin-border ${isEven ? 'bg-fin-card/30' : 'bg-transparent'} hover:bg-fin-hover/10 transition-colors h-full`}>
-            <div className="flex justify-between items-center mb-1">
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${styles.badge}`}>
-                    {log.agent}
-                </span>
-                <span className="text-text-muted text-[10px] font-mono">
+        <div className={cn(
+            "flex flex-col py-3 px-4 border-b border-white/5 transition-colors group",
+            idx % 2 === 0 ? 'bg-white/[0.02]' : 'bg-transparent',
+            "hover:bg-white/[0.05]"
+        )}>
+            <div className="flex justify-between items-center mb-1.5">
+                <div className="flex items-center space-x-2">
+                    <div className={cn("flex items-center space-x-1.5 px-2 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider", styles.badge)}>
+                        {styles.icon}
+                        <span>{log.agent}</span>
+                    </div>
+                    <div className="flex items-center space-x-1 pl-1.5 border-l border-zinc-800">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: provider.color }} />
+                        <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-tighter">{provider.name}</span>
+                    </div>
+                </div>
+                <span className="text-zinc-600 text-[9px] font-mono">
                     {timeString}
                 </span>
             </div>
-            <span className={`${messageColor} font-medium leading-relaxed`}>
+            <span className={cn("text-[11px] leading-relaxed break-words", styles.text)}>
                 {log.message}
             </span>
         </div>
@@ -53,49 +77,78 @@ const LogItem = React.memo(({ log, idx, styles }: { log: any, idx: number, style
 });
 
 const LiveFeedBase: React.FC = () => {
-  const logs = useUIStore(state => state.logs);
+  const allLogs = useUIStore(state => state.logs);
+  const [filter, setFilter] = useState<FilterType>('ALL');
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const parentRef = useRef<HTMLDivElement>(null);
 
-  // Virtualizer Pass: Hardening DOM nodes to ~20 visible rows
+  const filteredLogs = useMemo(() => {
+    if (filter === 'ALL') return allLogs;
+    return allLogs.filter(log => log.level === filter);
+  }, [allLogs, filter]);
+
   const rowVirtualizer = useVirtualizer({
-    count: logs.length,
+    count: filteredLogs.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: useCallback(() => 85, []), // Stable callback for virtualizer
-    overscan: 5,
+    estimateSize: useCallback(() => 65, []),
+    overscan: 10,
   });
 
-  // Handle auto-scroll to bottom on new logs
-  useEffect(() => {
-    if (logs.length > 0) {
-      rowVirtualizer.scrollToIndex(logs.length - 1, { behavior: 'smooth' });
-    }
-  }, [logs.length, rowVirtualizer]);
-
-  // Stable callback for log styles to prevent re-renders
-  const getLogStyles = useCallback((level: LogLevel) => {
-    switch (level) {
-      case LogLevel.INFO: return { color: 'text-text-main', badge: 'bg-poly-blue/10 text-poly-blue border-poly-blue/20' };
-      case LogLevel.WARN: return { color: 'text-amber-400', badge: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
-      case LogLevel.ERROR: return { color: 'text-kalshi-red', badge: 'bg-kalshi-red/10 text-kalshi-red border-kalshi-red/20' };
-      case LogLevel.SUCCESS: return { color: 'text-kalshi-green', badge: 'bg-kalshi-green/10 text-kalshi-green border-kalshi-green/20' };
-      default: return { color: 'text-text-main', badge: 'bg-zinc-800 text-zinc-400 border-zinc-700' };
-    }
+  const handleScroll = useCallback(() => {
+    if (!parentRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
+    const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setIsAtBottom(atBottom);
   }, []);
 
+  useEffect(() => {
+    if (isAtBottom && filteredLogs.length > 0) {
+      rowVirtualizer.scrollToIndex(filteredLogs.length - 1, { behavior: 'smooth' });
+    }
+  }, [filteredLogs.length, isAtBottom, rowVirtualizer]);
+
+  const scrollToBottom = () => {
+    setIsAtBottom(true);
+    rowVirtualizer.scrollToIndex(filteredLogs.length - 1, { behavior: 'smooth' });
+  };
+
   return (
-    <div className="h-full flex flex-col font-sans text-xs overflow-hidden bg-zinc-950/30">
+    <div className="h-full flex flex-col font-sans overflow-hidden bg-zinc-950/20" data-testid="live-feed">
+        {/* Filters */}
+        <div className="flex-none p-2 border-b border-fin-border bg-black/20 flex items-center justify-between">
+            <div className="flex space-x-1">
+                {(['ALL', 'INFO', 'WARN', 'ERROR'] as const).map((f) => (
+                    <button
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={cn(
+                            "px-2 py-1 rounded text-[9px] font-bold uppercase tracking-widest transition-all",
+                            filter === f ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
+                        )}
+                    >
+                        {f}
+                    </button>
+                ))}
+            </div>
+            <div className="text-[9px] font-mono text-zinc-600 flex items-center">
+                <Filter size={10} className="mr-1" />
+                <span>ACTIVE FILTERS</span>
+            </div>
+        </div>
+
         <div 
             ref={parentRef}
-            className="flex-1 overflow-y-auto min-h-0 p-0 z-10 custom-scrollbar"
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto min-h-0 custom-scrollbar relative"
         >
-            {logs.length === 0 ? (
-                <div className="p-4 text-text-muted italic flex items-center justify-center h-full">
-                    <Activity className="mr-2 animate-spin" size={16}/> Connecting to Council...
-                </div>
+            {filteredLogs.length === 0 ? (
+                <EmptyState 
+                    icon={<Activity size={32} className="text-zinc-800" />}
+                    title="Circuit Silent"
+                    message={filter === 'ALL' ? "Connecting to agent council sessions..." : `No ${filter.toLowerCase()} events in buffered memory.`}
+                />
             ) : (
                 <div
-                    aria-live="polite"
-                    aria-atomic="false"
                     style={{
                         height: `${rowVirtualizer.getTotalSize()}px`,
                         width: '100%',
@@ -110,23 +163,31 @@ const LiveFeedBase: React.FC = () => {
                                 top: 0,
                                 left: 0,
                                 width: '100%',
-                                height: `${virtualItem.size}px`,
                                 transform: `translateY(${virtualItem.start}px)`,
                             }}
                         >
                             <LogItem 
-                                log={logs[virtualItem.index]} 
+                                log={filteredLogs[virtualItem.index]} 
                                 idx={virtualItem.index} 
-                                styles={getLogStyles(logs[virtualItem.index].level)}
                             />
                         </div>
                     ))}
                 </div>
             )}
         </div>
+
+        {/* Scroll Indicator */}
+        {!isAtBottom && filteredLogs.length > 0 && (
+            <button 
+                onClick={scrollToBottom}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-poly-blue text-white px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-tighter shadow-xl flex items-center space-x-1.5 animate-bounce z-50"
+            >
+                <ArrowDown size={12} />
+                <span>New Activity</span>
+            </button>
+        )}
     </div>
   );
 };
 
-// Apply memo and measureRender HOC
 export const LiveFeed = React.memo(measureRender(LiveFeedBase, 'LiveFeed'));

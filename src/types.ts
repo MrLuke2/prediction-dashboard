@@ -18,6 +18,7 @@ export interface LogEntry {
   agent: AgentRole;
   message: string;
   level: LogLevel;
+  providerId?: string;
 }
 
 export interface MarketPair {
@@ -38,11 +39,17 @@ export interface WhaleMovement {
   asset: string;
   confidence: number; // 0-1
   timestamp: number;
+  providerId?: string;
 }
 
 export interface AlphaMetric {
   probability: number; // 0-100
   trend: 'increasing' | 'decreasing' | 'stable';
+  breakdown?: {
+    fundamentals: { score: number; providerId: string };
+    sentiment: { score: number; providerId: string };
+    risk: { score: number; providerId: string };
+  };
 }
 
 export interface PnLData {
