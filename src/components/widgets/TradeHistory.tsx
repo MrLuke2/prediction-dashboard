@@ -3,6 +3,7 @@ import { History, ShieldAlert, Zap, Lock, AlertTriangle, ShieldCheck, Cpu } from
 import { useTradeStore, useUIStore } from '../../store';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { measureRender } from '../../lib/perf';
+import { EmptyState, LoadingSpinner } from '../ui/DataStates';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { LogLevel, AgentRole } from '../../types';
@@ -206,9 +207,12 @@ const TradeHistoryBase: React.FC = () => {
                 className="flex-1 overflow-y-auto min-h-0 overflow-x-hidden custom-scrollbar p-0"
             >
             {history.length === 0 ? (
-                 <div className="p-12 text-center flex flex-col items-center space-y-3">
-                    <History size={32} className="text-zinc-800" />
-                    <p className="text-[10px] text-zinc-600 font-mono tracking-widest">ZERO TRADES RECORDED</p>
+                 <div className="h-full flex items-center justify-center p-8" data-testid="trade-history">
+                    <EmptyState 
+                        icon={<History size={32} className="text-zinc-800" />}
+                        title="No history found"
+                        message="Your trading vault is currently empty."
+                    />
                  </div>
             ) : (
                 <div

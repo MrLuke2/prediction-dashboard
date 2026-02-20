@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckCircle2, XCircle, ArrowUpRight, ArrowDownRight, CircleDashed, BarChart3 } from 'lucide-react';
 import { useTradeStore } from '../../store';
 import { measureRender } from '../../lib/perf';
+import { EmptyState } from '../ui/DataStates';
 
 export const PnLCardSkeleton: React.FC = React.memo(() => (
     <div className="h-full w-full flex flex-col items-center justify-center p-8 space-y-4 bg-zinc-950/30">
@@ -16,12 +17,12 @@ const PnLCardBase: React.FC = () => {
   
   if (!data) {
     return (
-        <div className="relative w-full h-full flex items-center justify-center p-6 bg-zinc-950/50">
-             <div className="flex flex-col items-center text-zinc-600 animate-pulse">
-                <CircleDashed size={48} className="mb-4 opacity-50" />
-                <span className="text-xs font-mono font-bold tracking-widest uppercase">System Idle</span>
-                <span className="text-[10px] mt-1">Waiting for execution...</span>
-             </div>
+        <div className="relative w-full h-full flex items-center justify-center p-6 bg-zinc-950/50" data-testid="pnl-card">
+             <EmptyState 
+                icon={<CircleDashed size={32} className="opacity-50" />}
+                title="System Idle"
+                message="Waiting for execution telemetry..."
+             />
         </div>
     );
   }

@@ -166,6 +166,7 @@ export const ControlCenter: React.FC = () => {
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 250 }}
             className="fixed top-0 right-0 h-full w-full max-w-md bg-brand-fin-bg border-l border-fin-border z-[160] shadow-2xl flex flex-col overflow-hidden"
+            data-testid="control-center-sidebar"
           >
             {/* Header */}
             <div className="p-6 border-b border-fin-border flex items-center justify-between bg-zinc-950/50 shrink-0">

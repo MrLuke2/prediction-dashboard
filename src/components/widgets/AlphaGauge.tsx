@@ -158,9 +158,11 @@ const AlphaGaugeBase: React.FC = () => {
                   <div className="flex justify-between items-center text-[10px]">
                     <div className="flex items-center space-x-2">
                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.provider.color }} />
-                       <span className="text-white font-bold">{item.provider.name} <span className="text-zinc-500 font-normal">({item.label})</span></span>
+                       <span className="text-white font-bold">
+                         {item.provider.name} <span className="text-zinc-500 font-normal italic">({item.label})</span>:
+                       </span>
                     </div>
-                    <span className="font-mono text-zinc-400">{item.score}%</span>
+                    <span className="font-mono text-white font-black">{item.score}%</span>
                   </div>
                   <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
                     <motion.div 

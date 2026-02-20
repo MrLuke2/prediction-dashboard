@@ -152,7 +152,7 @@ const LiveFeedBase: React.FC = () => {
                             filter === f ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
                         )}
                     >
-                        {f}
+                        {f === 'ERROR' ? 'ALERT' : f}
                     </button>
                 ))}
             </div>

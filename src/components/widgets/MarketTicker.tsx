@@ -37,10 +37,10 @@ const MarketTickerBase: React.FC<MarketTickerProps> = ({ data, lastUpdate }) => 
   if (!data || data.length === 0) {
     return (
       <div className="w-full bg-fin-card border-b border-fin-border h-12 flex items-center justify-center relative z-40" data-testid="market-ticker">
-         <div className="flex items-center space-x-2 text-zinc-500 text-[10px] uppercase font-bold tracking-widest">
-            <Info size={12} />
-            <span>Awaiting market data...</span>
-         </div>
+         <EmptyState 
+            title="Awaiting market data"
+            message="Connecting to A2UI Protocol nodes..."
+         />
       </div>
     );
   }

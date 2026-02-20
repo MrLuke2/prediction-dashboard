@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MarketPair, AgentRole } from '../../types';
 import { X, TrendingUp, TrendingDown, Zap, Shield, BarChart3, Activity, ArrowRightLeft, Lock, CheckCircle2, Info, ChevronRight, User, AlertTriangle } from 'lucide-react';
 import { GlassPanel } from '../ui/GlassPanel/GlassPanel';
+import { motion, AnimatePresence } from 'framer-motion';
 import { measureRender } from '../../lib/perf';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useUIStore, useMarketStore, useTradeStore } from '../../store';
@@ -9,6 +10,7 @@ import { useAuthGuard } from '../../hooks/useAuthGuard';
 import { AI_PROVIDERS } from '../../config/aiProviders';
 import { formatUSD, formatPct, formatSpread } from '../../lib/formatters';
 import { WhaleMovementRow } from '../ui/WhaleMovementRow';
+import { EmptyState, LoadingSpinner } from '../ui/DataStates';
 import { timeAgo, cn } from '../../lib/utils';
 
 interface UltimateInsightsCardProps {
@@ -251,9 +253,10 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
                     })}
                 </div>
             ) : (
-                <div className="p-8 text-center bg-zinc-950/20 border border-dashed border-zinc-800 rounded-xl">
-                    <p className="text-xs text-zinc-500">No active deep-dive analysis found for this market.</p>
-                </div>
+                <EmptyState 
+                    title="Circuit Silent"
+                    message="No active deep-dive analysis found for this market."
+                />
             )}
         </div>
 
@@ -277,10 +280,11 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
                 ))}
             </div>
         ) : (
-            <div className="p-12 text-center">
-                <Activity size={48} className="mx-auto text-zinc-800 mb-4 opacity-20" />
-                <p className="text-xs text-zinc-500">No significant whale activity detected in this sector.</p>
-            </div>
+             <EmptyState 
+                icon={<Activity size={32} />}
+                title="Radar Quiet"
+                message="No significant whale activity detected in this sector."
+            />
         )}
     </div>
   );
@@ -407,7 +411,10 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
                     <TrendingUp size={14} className="mr-2" />
                     Est. Profit (Arb)
                 </div>
-                <div className="text-xl font-mono font-bold text-kalshi-green">+{formatUSD(estimatedPnL)}</div>
+                <div className="flex flex-col items-end">
+                    <div className="text-xl font-mono font-bold text-kalshi-green">+{formatUSD(estimatedPnL)}</div>
+                    <span className="text-[8px] font-black text-kalshi-green/60 uppercase tracking-[0.2em] animate-pulse">Live Arbitrage Sync active</span>
+                </div>
             </div>
             <div className="mt-2 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
                 <div className="h-full bg-kalshi-green" style={{ width: '10%' }} />
@@ -417,29 +424,35 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
         {!isExecuting ? (
             <button 
                 onClick={handleExecute}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-poly-blue to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white font-black text-lg shadow-2xl shadow-blue-500/20 transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center space-x-3"
+                disabled={!size || parseFloat(size) <= 0}
+                data-testid="execute-arb-button"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-poly-blue to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white font-black text-lg shadow-2xl shadow-blue-500/20 transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center space-x-3 disabled:opacity-50 disabled:grayscale disabled:scale-100"
             >
                 <Zap size={20} className="fill-white" />
-                <span>EXECUTE ARB</span>
+                <span>EXECUTE ARBITRAGE</span>
             </button>
         ) : (
-            <div className="bg-zinc-900 border border-fin-border rounded-xl p-4 space-y-3" aria-live="polite">
-                <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-400">1. Routing Liquidity</span>
-                    {executionStep > 0 ? <CheckCircle2 size={16} className="text-kalshi-green" /> : <div className="w-4 h-4 rounded-full border-2 border-zinc-700 border-t-poly-blue animate-spin"></div>}
+            <div className="bg-zinc-900 border border-fin-border rounded-xl p-4 space-y-3" aria-live="polite" data-testid="execution-progress">
+                <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-400 font-mono tracking-tighter">PHASE 01: ROUTING LIQUIDITY</span>
+                    {executionStep > 0 ? <CheckCircle2 size={14} className="text-kalshi-green" /> : <div className="w-3 h-3 rounded-full border-2 border-zinc-700 border-t-poly-blue animate-spin"></div>}
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-400">2. Concurrent Order Placement</span>
-                    {executionStep > 1 ? <CheckCircle2 size={16} className="text-kalshi-green" /> : executionStep === 1 ? <div className="w-4 h-4 rounded-full border-2 border-zinc-700 border-t-poly-blue animate-spin"></div> : <div className="w-4 h-4 rounded-full border-zinc-800 border-2"></div>}
+                <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-400 font-mono tracking-tighter">PHASE 02: CROSS-VENUE EXECUTION</span>
+                    {executionStep > 1 ? <CheckCircle2 size={14} className="text-kalshi-green" /> : executionStep === 1 ? <div className="w-3 h-3 rounded-full border-2 border-zinc-700 border-t-poly-blue animate-spin"></div> : <div className="w-3 h-3 rounded-full border-zinc-800 border-2"></div>}
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-400">3. Bridge Settlement</span>
-                    {executionStep > 2 ? <CheckCircle2 size={16} className="text-kalshi-green" /> : executionStep === 2 ? <div className="w-4 h-4 rounded-full border-2 border-zinc-700 border-t-poly-blue animate-spin"></div> : <div className="w-4 h-4 rounded-full border-zinc-800 border-2"></div>}
+                <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-400 font-mono tracking-tighter">PHASE 03: SETTLEMENT LAYER</span>
+                    {executionStep > 2 ? <CheckCircle2 size={14} className="text-kalshi-green" /> : executionStep === 2 ? <div className="w-3 h-3 rounded-full border-2 border-zinc-700 border-t-poly-blue animate-spin"></div> : <div className="w-3 h-3 rounded-full border-zinc-800 border-2"></div>}
                 </div>
                 {executionStep === 3 && (
-                    <div className="mt-2 text-center text-kalshi-green font-bold text-xs bg-kalshi-green/10 py-3 rounded-lg animate-pulse border border-kalshi-green/20">
-                        ARBITRAGE SECURED ON-CHAIN
-                    </div>
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mt-2 text-center text-kalshi-green font-black text-[10px] bg-kalshi-green/10 py-3 rounded-lg border border-kalshi-green/20 uppercase tracking-[0.2em]"
+                    >
+                        Arbitrage Secured On-Chain
+                    </motion.div>
                 )}
             </div>
         )}
@@ -465,6 +478,7 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
     >
       <div 
         ref={containerRef}
+        data-testid="ultimate-insights-card"
         className="w-[90%] h-[85%] max-w-6xl bg-zinc-950 border border-fin-border rounded-3xl shadow-[0_0_100px_rgba(59,130,246,0.15)] flex flex-col overflow-hidden relative"
       >
         {/* Header Section */}
