@@ -22,7 +22,7 @@ export const useWebSocket = () => {
       const url = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
       clientInstance = new WebSocketClient(
         url,
-        () => null, // Placeholder for getToken
+        () => useUIStore.getState().jwt,
         (state) => {
           setConnectionState(state);
           setIsConnected(state === 'connected');
@@ -52,6 +52,15 @@ export const useWebSocket = () => {
        clientInstance.send('SET_AI_PROVIDER', aiProvider);
     }
   }, [aiProvider, isConnected]);
+
+  // Reconnect on JWT change
+  const jwt = useUIStore(state => state.jwt);
+  useEffect(() => {
+    if (clientInstance) {
+      clientInstance.disconnect();
+      clientInstance.connect();
+    }
+  }, [jwt]);
 
   const subscribeToMarket = useCallback((symbol: string) => {
     clientInstance?.send('SUBSCRIBE_MARKET', { symbol });

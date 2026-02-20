@@ -26,6 +26,8 @@ export const useUIStore = create<UIState>()(
             logs: [],
             mobileTab: 'overview',
             aiProvider: { providerId: 'anthropic', model: 'claude-sonnet-4-5' },
+            jwt: null,
+            user: null,
             setTutorialOpen: (open) => set({ isTutorialOpen: open }),
             setAuthOpen: (open) => set({ isAuthOpen: open }),
             setBooting: (booting) => set({ isBooting: booting }),
@@ -36,13 +38,17 @@ export const useUIStore = create<UIState>()(
             setLogs: (logs) => set({ logs }),
             setMobileTab: (tab) => set({ mobileTab: tab }),
             setAIProvider: (selection) => set({ aiProvider: selection }),
+            setAuth: (token, user) => set({ jwt: token, user }),
+            clearAuth: () => set({ jwt: null, user: null }),
         }),
         {
             name: 'ui-storage',
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({ 
                 aiProvider: state.aiProvider,
-                mobileTab: state.mobileTab 
+                mobileTab: state.mobileTab,
+                jwt: state.jwt,
+                user: state.user
             }),
         }
     )

@@ -15,6 +15,8 @@ export interface LayoutSlots {
     rightBottom: WidgetType;
 }
 
+import { UserProfile } from '../services/api/authApi';
+
 export interface UIState {
     isTutorialOpen: boolean;
     isAuthOpen: boolean;
@@ -26,6 +28,8 @@ export interface UIState {
     logs: LogEntry[];
     mobileTab: MobileTab;
     aiProvider: AIProviderSelection;
+    jwt: string | null;
+    user: UserProfile | null;
     setTutorialOpen: (open: boolean) => void;
     setAuthOpen: (open: boolean) => void;
     setBooting: (booting: boolean) => void;
@@ -36,6 +40,8 @@ export interface UIState {
     setLogs: (logs: LogEntry[]) => void;
     setMobileTab: (tab: MobileTab) => void;
     setAIProvider: (selection: AIProviderSelection) => void;
+    setAuth: (token: string, user: UserProfile) => void;
+    clearAuth: () => void;
 }
 
 export interface LayoutState {
