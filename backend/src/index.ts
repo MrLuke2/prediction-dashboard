@@ -17,6 +17,8 @@ import type { FastifyBaseLogger } from 'fastify';
 import authRoutes from './routes/auth/index.js';
 import apiKeyRoutes from './routes/user/api-keys.js';
 import aiUsageRoutes from './routes/ai/index.js';
+import marketRoutes from './routes/markets/index.js';
+import { initMarketSync } from './jobs/market-sync.job.js';
 
 const fastify = Fastify({
   logger: logger as unknown as FastifyBaseLogger,
@@ -118,9 +120,13 @@ const start = async () => {
     await fastify.register(authRoutes, { prefix: '/auth' });
     await fastify.register(apiKeyRoutes, { prefix: '/user/api-keys' });
     await fastify.register(aiUsageRoutes, { prefix: '/ai' });
+    await fastify.register(marketRoutes, { prefix: '/markets' });
 
     // 8. Start Server
     await fastify.listen({ port: config.PORT, host: '0.0.0.0' });
+
+    // 9. Start Background Jobs
+    await initMarketSync();
 
     console.log(`🚀 Server ready at http://0.0.0.0:${config.PORT}`);
     console.log(`📖 Documentation at http://0.0.0.0:${config.PORT}/docs`);

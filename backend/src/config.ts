@@ -29,6 +29,7 @@ const envSchema = z.object({
   // Legacy keys (kept for backward compat)
   POLYMARKET_API_KEY: z.string().optional(),
   KALSHI_API_KEY: z.string().optional(),
+  KALSHI_API_SECRET: z.string().optional(),
   POLYGON_RPC_URL: z.string().url().optional(),
   OPERATOR_PRIVATE_KEY: z.string().optional(),
 

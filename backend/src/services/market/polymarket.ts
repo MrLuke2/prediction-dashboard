@@ -1,142 +1,178 @@
-import axios from 'axios';
-import WebSocket from 'ws';
-import { EventEmitter } from 'events';
-import { logger } from '../../lib/logger.js';
 import { config } from '../../config.js';
+import { logger } from '../../lib/logger.js';
+import type { MarketPrice } from './types.js';
 
-interface PolymarketMarket {
-  ticker: string;
-  slug: string;
-  question: string;
-  description: string;
-  endDate: string;
-  // Add other required fields from API response
-}
+const GAMMA_API = 'https://gamma-api.polymarket.com';
+const CLOB_API = 'https://clob.polymarket.com';
+const CLOB_WS = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
 
-export class PolymarketClient extends EventEmitter {
-  private baseUrl = 'https://clob.polymarket.com'; // Using CLOB API base URL as example
-  private wsUrl = 'wss://ws-gemini.polymarket.com'; // Example WS URL, verify documentation
+const REQUEST_TIMEOUT = 8_000;
+const MAX_RETRIES = 5;
+
+export class PolymarketClient {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxRetries = 5;
-  private subscriptions: Set<string> = new Set();
-  
-  constructor() {
-    super();
-    // this.connectWs(); // Connect on demand or init? Ideally explicit start.
-  }
+  private subscriptions = new Map<string, (price: MarketPrice) => void>();
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Fetch paginated active markets
-  async fetchMarkets(limit = 20, cursor?: string): Promise<{ data: any[], nextCursor?: string }> {
+  /** Fetch paginated active markets from Gamma API */
+  async fetchMarkets(limit = 50, offset = 0): Promise<any[]> {
     try {
-      // NOTE: Using a simplified endpoint for demonstration. real endpoint: /markets?active=true
-      const response = await axios.get(`${this.baseUrl}/markets`, {
-        params: { limit, next_cursor: cursor, active: true },
-        timeout: 5000
+      const url = `${GAMMA_API}/markets?limit=${limit}&offset=${offset}&active=true&closed=false`;
+      const res = await fetch(url, {
+        headers: this.headers(),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT),
       });
-      return response.data;
-    } catch (error) {
-      logger.error({ error }, 'Polymarket fetchMarkets failed');
-      throw error;
+
+      if (!res.ok) {
+        logger.warn({ status: res.status }, 'Polymarket fetchMarkets non-OK');
+        return [];
+      }
+
+      return await res.json() as any[];
+    } catch (err) {
+      logger.error({ err }, 'Polymarket fetchMarkets failed');
+      return [];
     }
   }
 
-  // Fetch single market price (yes/no)
-  async fetchMarketPrice(slug: string): Promise<{ yes: number; no: number } | null> {
-    try {
-      // Typically getting by condition_id or token_id. Assuming slug lookup first or passed ID.
-      // For this task, assuming slug maps to a fetchable entity.
-      // Using a hypothetical endpoint or direct lookup if we had IDs.
-      // Often requires resolving slug to conditionId via Gamma API (https://gamma-api.polymarket.com/markets?slug=...)
-      // Switching to Gamma API for market data which is better for reading.
-      const gammaUrl = 'https://gamma-api.polymarket.com/markets';
-      const response = await axios.get(gammaUrl, {
-        params: { slug },
-        timeout: 5000
-      });
-      
-      const market = response.data[0]; // array
-      if (!market || !market.outcomePrices) return null;
+  /** Fetch price for a single market by slug */
+  async fetchMarketPrice(slug: string): Promise<MarketPrice | null> {
+    if (!slug) return null;
 
-      // JSON string usually: "[\"0.65\", \"0.35\"]"
+    try {
+      const url = `${GAMMA_API}/markets?slug=${encodeURIComponent(slug)}`;
+      const res = await fetch(url, {
+        headers: this.headers(),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+      });
+
+      if (!res.ok) return null;
+
+      const markets = await res.json() as any[];
+      const market = markets[0];
+      if (!market?.outcomePrices) return null;
+
       const prices = JSON.parse(market.outcomePrices);
+      const volume = parseFloat(market.volume24hr ?? market.volume ?? '0');
+
       return {
-        yes: parseFloat(prices[0]), 
-        no: parseFloat(prices[1])
+        yes: parseFloat(prices[0]),
+        no: parseFloat(prices[1]),
+        volume24h: volume,
+        source: 'polymarket',
+        timestamp: Date.now(),
       };
-    } catch (error) {
-      logger.error({ error, slug }, 'Polymarket fetchMarketPrice failed');
+    } catch (err) {
+      logger.error({ err, slug }, 'Polymarket fetchMarketPrice failed');
       return null;
     }
   }
 
-  connectWs() {
+  /** Subscribe to real-time price updates via CLOB WebSocket */
+  subscribeToMarket(slug: string, cb: (price: MarketPrice) => void): void {
+    this.subscriptions.set(slug, cb);
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.connectWs();
+    } else {
+      this.sendSubscribe(slug);
+    }
+  }
+
+  /** Unsubscribe from a market */
+  unsubscribe(slug: string): void {
+    this.subscriptions.delete(slug);
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'unsubscribe', assets: [slug] }));
+    }
+  }
+
+  /** Disconnect WebSocket cleanly */
+  disconnect(): void {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectAttempts = MAX_RETRIES; // prevent reconnect
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+  }
+
+  // ── Internal ──────────────────────────────────────────────────────────
+
+  private connectWs(): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
 
-    this.ws = new WebSocket(this.wsUrl);
-
-    this.ws.on('open', () => {
-      logger.info('Polymarket WS Connected');
-      this.reconnectAttempts = 0;
-      this.resubscribe();
-    });
-
-    this.ws.on('message', (data: WebSocket.Data) => {
-        // Parse CLOB message
-        // Emit 'price_update'
-        try {
-            const msg = JSON.parse(data.toString());
-            // Handle specific message types (orderbook, trade, etc.)
-            // Assuming simplified emit for now
-            this.emit('message', msg);
-        } catch (err) {
-            // ignore malformed
-        }
-    });
-
-    this.ws.on('close', () => {
-      logger.warn('Polymarket WS Closed');
-      this.handleReconnect();
-    });
-
-    this.ws.on('error', (err) => {
-      logger.error({ err }, 'Polymarket WS Error');
-    });
-  }
-
-  subscribeToMarket(slug: string, callback: (data: any) => void) {
-    this.subscriptions.add(slug);
-    // In reality, we need asset_id or token_id to subscribe to CLOB channel
-    // We would send: { type: "subscribe", channel: "price", market: slug }
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ type: 'subscribe', assets: [slug] })); // Example payload
-    } else {
-        this.connectWs();
-    }
-    
-    // Bind callback to internal event emitter for this slug
-    this.on('price_update', (update) => {
-        if (update.slug === slug) callback(update);
-    });
-  }
-
-  private resubscribe() {
-      // Re-send all subscriptions
-      if (this.subscriptions.size > 0 && this.ws?.readyState === WebSocket.OPEN) {
-          const assets = Array.from(this.subscriptions);
-          this.ws.send(JSON.stringify({ type: 'subscribe', assets }));
-      }
-  }
-
-  private handleReconnect() {
-    if (this.reconnectAttempts >= this.maxRetries) {
-      logger.error('Polymarket WS Max Retries Exceeded');
+    try {
+      this.ws = new WebSocket(CLOB_WS);
+    } catch (err) {
+      logger.error({ err }, 'Polymarket WS construction failed');
+      this.scheduleReconnect();
       return;
     }
 
-    const delay = Math.pow(2, this.reconnectAttempts) * 1000;
+    this.ws.addEventListener('open', () => {
+      logger.info('Polymarket WS connected');
+      this.reconnectAttempts = 0;
+      for (const slug of this.subscriptions.keys()) {
+        this.sendSubscribe(slug);
+      }
+    });
+
+    this.ws.addEventListener('message', (event) => {
+      try {
+        const msg = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString());
+        // Translate CLOB message to MarketPrice — structure varies by channel
+        if (msg.market || msg.asset_id) {
+          const slug = msg.market ?? msg.asset_id;
+          const cb = this.subscriptions.get(slug);
+          if (cb && msg.price !== undefined) {
+            cb({
+              yes: parseFloat(msg.price),
+              no: 1 - parseFloat(msg.price),
+              volume24h: parseFloat(msg.size ?? '0'),
+              source: 'polymarket',
+              timestamp: Date.now(),
+            });
+          }
+        }
+      } catch {
+        // Ignore malformed WS messages
+      }
+    });
+
+    this.ws.addEventListener('close', () => {
+      logger.warn('Polymarket WS closed');
+      this.scheduleReconnect();
+    });
+
+    this.ws.addEventListener('error', () => {
+      logger.warn('Polymarket WS error');
+    });
+  }
+
+  private sendSubscribe(slug: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'subscribe', assets: [slug] }));
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= MAX_RETRIES) {
+      logger.error('Polymarket WS max retries exceeded');
+      return;
+    }
+    const delay = Math.pow(2, this.reconnectAttempts) * 1000; // 1s, 2s, 4s, 8s, 16s
     this.reconnectAttempts++;
-    logger.info(`Reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
-    setTimeout(() => this.connectWs(), delay);
+    logger.info({ attempt: this.reconnectAttempts, delay }, 'Polymarket WS reconnecting…');
+    this.reconnectTimer = setTimeout(() => this.connectWs(), delay);
+  }
+
+  private headers(): Record<string, string> {
+    const h: Record<string, string> = { 'Accept': 'application/json' };
+    if (config.POLYMARKET_API_KEY) {
+      h['Authorization'] = `Bearer ${config.POLYMARKET_API_KEY}`;
+    }
+    return h;
   }
 }

@@ -14,7 +14,7 @@ export default async function whaleRoutes(fastify: FastifyInstance) {
 
     try {
       const movements = await db.query.whaleMovements.findMany({
-        orderBy: [desc(whaleMovements.timestamp)],
+        orderBy: [desc(whaleMovements.detectedAt)],
         limit: 50
       });
 
@@ -33,14 +33,15 @@ export default async function whaleRoutes(fastify: FastifyInstance) {
     try {
       const history = await db.query.whaleMovements.findMany({
         where: eq(whaleMovements.walletAddress, address),
-        orderBy: [desc(whaleMovements.timestamp)],
+        orderBy: [desc(whaleMovements.detectedAt)],
         limit: 100
       });
 
       let pnlEstimate = 0;
       history.forEach(m => {
-        if (m.direction === 'buy') pnlEstimate -= m.amountUsd;
-        else pnlEstimate += m.amountUsd;
+        const amount = parseFloat(m.amountUsd);
+        if (m.direction === 'in') pnlEstimate -= amount;
+        else pnlEstimate += amount;
       });
 
       return { 
