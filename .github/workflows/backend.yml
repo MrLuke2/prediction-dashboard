@@ -21,7 +21,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: backend
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Lint
         working-directory: backend
@@ -64,15 +64,5 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/backend:latest
-            ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
-
-      - name: Deploy to Fly.io
-        if: success()
-        run: |
-          curl -L https://fly.io/install.sh | sh
-          export FLYCTL_INSTALL="/home/runner/.fly"
-          export PATH="$FLYCTL_INSTALL/bin:$PATH"
-          flyctl deploy --image ghcr.io/${{ github.repository }}/backend:${{ github.sha }} -a alpha-predict-backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+            ghcr.io/mrluke2/prediction-dashboard-backend:latest
+            ghcr.io/mrluke2/prediction-dashboard-backend:${{ github.sha }}

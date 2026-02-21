@@ -2,10 +2,10 @@ import { db } from '../db/index.js';
 import { priceSnapshots, agentLogs, aiUsageMetrics } from '../db/schema/index.js';
 import { lt, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger.js';
-import { redis } from '../lib/redis.js';
+import { redis, redisConnection } from '../lib/redis.js';
 import { Worker, Queue } from 'bullmq';
 
-export const cleanupQueue = new Queue('cleanup', { connection: redis });
+export const cleanupQueue = new Queue('cleanup', { connection: redisConnection, });
 
 export async function runCleanupJob() {
   logger.info('Starting daily cleanup job...');
@@ -62,10 +62,7 @@ export const cleanupWorker = new Worker(
   async () => {
     await runCleanupJob();
   },
-  {
-    connection: redis,
-    concurrency: 1,
-  }
+  { connection: redisConnection, concurrency: 5 },
 );
 
 export async function initCleanupJob() {

@@ -1,5 +1,5 @@
 import { Worker, Queue } from 'bullmq';
-import { redis } from '../lib/redis.js';
+import { redis, redisConnection } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
 import { db } from '../db/index.js';
 import { priceSnapshots, marketPairs } from '../db/schema/index.js';
@@ -138,7 +138,7 @@ async function syncSingleMarket(market: MarketPair) {
 // ─── BullMQ Queue + Worker ──────────────────────────────────────────────────
 
 export const marketSyncQueue = new Queue('marketSync', {
-  connection: redis,
+  connection: redisConnection,
   defaultJobOptions: {
     removeOnComplete: 50,
     removeOnFail: 100,
@@ -184,7 +184,7 @@ export const marketSyncWorker = new Worker(
       // Never crash — swallow and let BullMQ retry
     }
   },
-  { connection: redis, concurrency: 1 },
+  { connection: redisConnection, concurrency: 5 },
 );
 
 // ─── Init ───────────────────────────────────────────────────────────────────

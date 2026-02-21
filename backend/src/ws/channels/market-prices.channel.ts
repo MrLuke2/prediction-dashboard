@@ -5,7 +5,7 @@ import { registry, ClientState } from '../clientState.js';
 import { MessageType, buildServerMessage, MarketUpdatePayload } from '../protocol.js';
 import { logger } from '../../lib/logger.js';
 
-const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
+const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null, enableReadyCheck: false });
 
 const GUEST_THROTTLE_MS = 2000;
 const PRO_THROTTLE_MS = 500;

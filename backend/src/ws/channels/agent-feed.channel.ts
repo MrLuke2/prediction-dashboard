@@ -5,7 +5,7 @@ import { registry } from '../clientState.js';
 import { MessageType, buildServerMessage, AgentLogPayload } from '../protocol.js';
 import { logger } from '../../lib/logger.js';
 
-const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
+const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null, enableReadyCheck: false });
 
 const PRO_LEVELS = new Set(['WARN', 'ERROR', 'DEBATE']);
 

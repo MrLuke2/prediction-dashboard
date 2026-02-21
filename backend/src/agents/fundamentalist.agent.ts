@@ -20,8 +20,8 @@ export class FundamentalistAgent extends BaseAgent {
   async analyze(ctx: AgentContext): Promise<AgentOutput> {
     const userPrompt = `Analyze the provided market data and identify fundamental mispricing opportunities.
 
-Top Spreads: ${JSON.stringify(ctx.topSpreads.slice(0, 5))}
-Recent Prices: ${JSON.stringify(ctx.recentPrices.slice(0, 20))}
+Top Spreads: ${JSON.stringify(ctx.topSpreads.slice(0, 5), (_, v) => typeof v === 'bigint' ? v.toString() : v)}
+Recent Prices: ${JSON.stringify(ctx.recentPrices.slice(0, 20), (_, v) => typeof v === 'bigint' ? v.toString() : v)}
 Market Conditions: ${ctx.marketConditions}
 
 Return JSON: { "signal": "bullish"|"bearish"|"neutral", "confidence": 0-100, "reasoning": "max 150 chars", "targetMarket": "symbol", "estimatedEdge": number }`;
