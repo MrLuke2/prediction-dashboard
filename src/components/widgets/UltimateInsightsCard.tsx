@@ -262,7 +262,7 @@ const UltimateInsightsCardBase: React.FC<UltimateInsightsCardProps> = ({ market,
 
         <button 
             className="w-full py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all flex items-center justify-center space-x-2"
-            onClick={() => console.log('Re-analyzing...')}
+            onClick={() => useTradeStore.getState().reAnalyze(market.symbol)}
         >
             <Activity size={14} className="animate-pulse" />
             <span>RE-ANALYZE WITH {currentProvider.name.toUpperCase()}</span>

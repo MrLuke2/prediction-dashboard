@@ -43,8 +43,21 @@ const TradeItem = React.memo(({ trade, isSelected, onSelect }: { trade: any, isS
             <div className="truncate font-bold text-white group-hover:text-white">
                 {trade.asset?.split('-')[0] || 'N/A'}
             </div>
-            <div className={`text-[9px] truncate font-bold ${trade.venue === 'Polymarket' ? 'text-poly-blue' : trade.venue === 'Kalshi' ? 'text-kalshi-green' : 'text-purple-400'}`}>
-                {trade.venue || 'MOCK'}
+            <div className="flex items-center space-x-2 truncate">
+                <span className={cn(
+                    "text-[9px] font-bold",
+                    trade.venue === 'Polymarket' ? 'text-poly-blue' : trade.venue === 'Kalshi' ? 'text-kalshi-green' : 'text-purple-400'
+                )}>
+                    {trade.venue || 'MOCK'}
+                </span>
+                {trade.side && (
+                    <span className={cn(
+                        "text-[7px] font-black px-1 py-0.5 rounded bg-zinc-800 tracking-tighter",
+                        trade.side === 'Buy' ? "text-kalshi-green" : "text-kalshi-red"
+                    )}>
+                        {trade.side.toUpperCase()}
+                    </span>
+                )}
             </div>
             <div className={`text-right font-bold ${isPositive ? 'text-kalshi-green' : 'text-kalshi-red'}`}>
                 {isPositive ? '+' : ''}{trade.amount.toLocaleString()}
@@ -178,11 +191,22 @@ const TradeHistoryBase: React.FC = () => {
   const selectedTradeId = displayedPnL?.tradeId;
   const parentRef = useRef<HTMLDivElement>(null);
 
+  const [venueFilter, setVenueFilter] = useState<'ALL' | 'POLYMARKET' | 'KALSHI'>('ALL');
+  const [sideFilter, setSideFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
+
   const isSuspended = tradeStatus === 'SUSPENDED';
+
+  const filteredHistory = useMemo(() => {
+    return history.filter(item => {
+        const matchesVenue = venueFilter === 'ALL' || (item.venue && item.venue.toUpperCase() === venueFilter);
+        const matchesSide = sideFilter === 'ALL' || (item.side && item.side.toUpperCase() === sideFilter);
+        return matchesVenue && matchesSide;
+    });
+  }, [history, venueFilter, sideFilter]);
 
   // Virtualization hardening: limit DOM complexity for long trade histories
   const rowVirtualizer = useVirtualizer({
-    count: history.length,
+    count: filteredHistory.length,
     getScrollElement: () => parentRef.current,
     estimateSize: useCallback(() => 45, []), // Fixed row height for trades
     overscan: 5,
@@ -190,14 +214,54 @@ const TradeHistoryBase: React.FC = () => {
 
   return (
     <div className={cn(
-        "flex flex-col h-full bg-fin-card/30 transition-all duration-700",
+        "flex flex-col h-full bg-fin-card/30 transition-all duration-700 relative",
         isSuspended && "bg-kalshi-red/5 shadow-[inset_0_0_50px_rgba(239,68,68,0.1)]"
     )}>
+        {/* Tactical Filters - Single Horizontal Line */}
+        <div className="px-3 py-2 border-b border-fin-border bg-zinc-950/20 flex items-center space-x-6 shrink-0 overflow-x-auto no-scrollbar">
+            <div className="flex items-center space-x-2 shrink-0">
+                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Venue:</span>
+                <div className="flex items-center space-x-1">
+                    {(['ALL', 'POLYMARKET', 'KALSHI'] as const).map(v => (
+                        <button 
+                        key={v}
+                        onClick={() => setVenueFilter(v)}
+                        className={cn(
+                            "px-2 py-0.5 rounded-md text-[8px] font-bold uppercase transition-all whitespace-nowrap",
+                            venueFilter === v ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300 bg-zinc-800/30"
+                        )}
+                        >
+                            {v}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <div className="flex items-center space-x-2 shrink-0">
+                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Side:</span>
+                <div className="flex items-center space-x-1">
+                    {(['ALL', 'BUY', 'SELL'] as const).map(s => (
+                        <button 
+                        key={s}
+                        onClick={() => setSideFilter(s)}
+                        className={cn(
+                            "px-2 py-0.5 rounded-md text-[8px] font-bold uppercase transition-all whitespace-nowrap",
+                            sideFilter === s ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300 bg-zinc-800/30"
+                        )}
+                        >
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+
         <div id="trade-history-container" className="flex flex-col flex-1 min-h-0">
-            <div className="grid grid-cols-5 gap-1 px-4 py-3 border-b border-fin-border text-[9px] text-text-muted font-bold uppercase tracking-wider bg-zinc-900/50 shrink-0">
-                <div>Timestamp</div>
+            {/* 6-Column Tactical Header */}
+            <div className="grid grid-cols-6 gap-1 px-4 py-3 border-b border-fin-border text-[9px] text-text-muted font-bold uppercase tracking-wider bg-zinc-900/50 shrink-0">
+                <div>Time</div>
                 <div>Asset</div>
                 <div>Venue</div>
+                <div>Side</div>
                 <div className="text-right">PnL</div>
                 <div className="text-right">ROI</div>
             </div>
@@ -206,12 +270,12 @@ const TradeHistoryBase: React.FC = () => {
                 ref={parentRef}
                 className="flex-1 overflow-y-auto min-h-0 overflow-x-hidden custom-scrollbar p-0"
             >
-            {history.length === 0 ? (
+            {filteredHistory.length === 0 ? (
                  <div className="h-full flex items-center justify-center p-8" data-testid="trade-history">
                     <EmptyState 
                         icon={<History size={32} className="text-zinc-800" />}
-                        title="No history found"
-                        message="Your trading vault is currently empty."
+                        title={history.length === 0 ? "No history found" : "Pipeline Filtered"}
+                        message={history.length === 0 ? "Your trading vault is currently empty." : "No sessions match the active tactical filters."}
                     />
                  </div>
             ) : (
@@ -222,25 +286,56 @@ const TradeHistoryBase: React.FC = () => {
                         position: 'relative',
                     }}
                 >
-                    {rowVirtualizer.getVirtualItems().map((virtualItem) => (
-                        <div
-                            key={virtualItem.key}
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '100%',
-                                height: `${virtualItem.size}px`,
-                                transform: `translateY(${virtualItem.start}px)`,
-                            }}
-                        >
-                            <TradeItem 
-                                trade={history[virtualItem.index]}
-                                isSelected={selectedTradeId === history[virtualItem.index].tradeId}
-                                onSelect={onSelect}
-                            />
-                        </div>
-                    ))}
+                    {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                        const trade = filteredHistory[virtualItem.index];
+                        const isPositive = trade.amount >= 0;
+                        const timestamp = new Date(trade.timestamp).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit', second: '2-digit' });
+
+                        return (
+                            <div
+                                key={virtualItem.key}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: `${virtualItem.size}px`,
+                                    transform: `translateY(${virtualItem.start}px)`,
+                                }}
+                            >
+                                <button
+                                    onClick={() => onSelect(trade)}
+                                    className={cn(
+                                        "w-full h-full grid grid-cols-6 gap-1 px-4 items-center transition-all border-b border-fin-border/50 text-[10px] font-mono",
+                                        trade.tradeId === selectedTradeId 
+                                            ? "bg-poly-blue/20 text-white border-l-2 border-l-poly-blue shadow-[inset_4px_0_12px_rgba(59,130,246,0.2)]" 
+                                            : "text-zinc-400 hover:bg-white/5"
+                                    )}
+                                >
+                                    <div className="truncate opacity-50">{timestamp}</div>
+                                    <div className="truncate font-bold text-white">{trade.asset?.split('-')[0] || 'N/A'}</div>
+                                    <div className={cn(
+                                        "truncate font-bold",
+                                        trade.venue === 'Polymarket' ? 'text-poly-blue' : trade.venue === 'Kalshi' ? 'text-kalshi-green' : 'text-purple-400'
+                                    )}>
+                                        {trade.venue || 'MUI'}
+                                    </div>
+                                    <div className={cn(
+                                        "font-black tracking-tighter",
+                                        trade.side === 'Buy' ? "text-kalshi-green" : "text-kalshi-red"
+                                    )}>
+                                        {trade.side?.toUpperCase() || 'N/A'}
+                                    </div>
+                                    <div className={cn("text-right font-bold", isPositive ? "text-kalshi-green" : "text-kalshi-red")}>
+                                        {isPositive ? '+' : ''}{trade.amount.toLocaleString()}
+                                    </div>
+                                    <div className={cn("text-right", isPositive ? "text-kalshi-green" : "text-kalshi-red")}>
+                                        {trade.roi}%
+                                    </div>
+                                </button>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

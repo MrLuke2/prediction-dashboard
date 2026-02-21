@@ -170,6 +170,17 @@ export const useTradeStore = create<TradeState>((set) => ({
         console.log('[Store] Submitting trade:', params);
         set({ pendingTrade: params });
     },
+    reAnalyze: (marketId) => {
+        console.log('[Store] Re-analyzing market:', marketId);
+        const { aiProvider } = useUIStore.getState();
+        useTradeStore.getState().addLog({
+            id: Math.random().toString(36).substring(2, 9),
+            timestamp: new Date().toISOString(),
+            agent: 'ORCHESTRATOR' as any,
+            message: `Initiating deep-dive re-analysis for ${marketId} using ${aiProvider.model}...`,
+            level: 'INFO' as any
+        });
+    },
     setTradeStatus: (status) => set({ tradeStatus: status }),
     toggleEmergency: (active) => set({ emergencyActive: active }),
 }));

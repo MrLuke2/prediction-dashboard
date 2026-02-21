@@ -30,6 +30,10 @@ export const WhaleMovementRow: React.FC<WhaleMovementRowProps> = ({ movement, no
                 <span className="text-[8px] font-bold text-poly-blue uppercase tracking-tighter">Verified Whale</span>
               </div>
             )}
+            <div className="px-1.5 py-0.5 rounded-full bg-zinc-800 border border-white/5 flex items-center">
+                <div className="w-1 h-1 rounded-full mr-1.5 animate-pulse" style={{ backgroundColor: provider.color }} />
+                <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-tighter">{provider.name} Flag</span>
+            </div>
           </div>
           
           <div className="flex items-center space-x-2">

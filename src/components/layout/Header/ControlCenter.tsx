@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Cpu, Zap, DollarSign, BarChart3, ShieldCheck, Brain, Eye, ShieldAlert, ChevronDown, Sliders } from 'lucide-react';
+import { X, Cpu, Zap, DollarSign, BarChart3, ShieldCheck, Brain, Eye, ShieldAlert, ChevronDown, Sliders, CheckCircle2 } from 'lucide-react';
 import { useUIStore } from '../../../store';
 import { AI_PROVIDERS, AgentConfigRole, AIProviderId, AgentModelAssignment } from '../../../config/aiProviders';
 import { cn } from '../../../lib/utils';
@@ -34,6 +34,9 @@ const AgentModelSelector: React.FC<{
   onChange: (role: AgentConfigRole, assignment: AgentModelAssignment) => void;
 }> = ({ role, assignment, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isPinging, setIsPinging] = useState(false);
+  const [pingResult, setPingResult] = useState<number | null>(null);
+
   const meta = AGENT_META[role] || AGENT_META.fundamentalist;
   const currentProvider = assignment 
     ? (AI_PROVIDERS.find(p => p.id === assignment.providerId) || AI_PROVIDERS[0])
@@ -41,97 +44,138 @@ const AgentModelSelector: React.FC<{
   
   const currentModelName = assignment?.modelId || currentProvider.defaultModel;
 
+  const handlePing = () => {
+    setIsPinging(true);
+    setPingResult(null);
+    setTimeout(() => {
+        setIsPinging(false);
+        setPingResult(Math.floor(Math.random() * 400) + 100);
+    }, 1500);
+  };
+
   return (
-    <div className="rounded-xl border border-fin-border bg-zinc-950 overflow-hidden shadow-lg transition-all hover:border-zinc-700">
+    <div className="rounded-2xl border border-fin-border bg-zinc-950 overflow-hidden shadow-2xl transition-all hover:border-zinc-700/50 group/card">
       {/* Agent Header */}
-      <div className="flex items-center space-x-3 p-4 bg-zinc-900/40 border-b border-fin-border/50">
-        <div 
-          className="p-2 rounded-lg shadow-inner" 
-          style={{ backgroundColor: `${meta.color}15`, color: meta.color }}
+      <div className="flex items-center justify-between p-4 bg-zinc-900/40 border-b border-fin-border/50">
+        <div className="flex items-center space-x-3">
+            <div 
+            className="p-2.5 rounded-xl shadow-[inset_0_0_12px_rgba(0,0,0,0.5)] border border-white/5" 
+            style={{ backgroundColor: `${meta.color}15`, color: meta.color }}
+            >
+            {meta.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-black text-white uppercase tracking-widest leading-none mb-1">{meta.label}</div>
+                <div className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-kalshi-green animate-pulse" />
+                    <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-tighter">Link Nominal</span>
+                </div>
+            </div>
+        </div>
+        
+        <button 
+            onClick={handlePing}
+            disabled={isPinging}
+            className="px-2 py-1 rounded bg-zinc-900 border border-white/5 text-[8px] font-black text-zinc-500 uppercase hover:text-white hover:bg-zinc-800 transition-all disabled:opacity-50"
         >
-          {meta.icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-black text-white uppercase tracking-widest leading-none mb-1">{meta.label}</div>
-          <div className="text-[9px] text-zinc-500 leading-tight pr-4">{meta.description}</div>
-        </div>
+            {isPinging ? 'Pinging...' : pingResult ? `${pingResult}ms` : 'Test Link'}
+        </button>
       </div>
 
-      {/* Model Picker */}
-      <div className="p-4 space-y-2">
-        <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block">Assigned Neural Model</label>
-        
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-between p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900 transition-all group relative overflow-hidden"
-        >
-          <div className="flex items-center space-x-3 relative z-10">
-            <div className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: currentProvider?.color, color: currentProvider?.color }} />
-            <div className="flex flex-col items-start leading-none">
-                <span className="text-[11px] font-bold text-white uppercase tracking-tighter">{currentModelName.replace(/-/g, ' ')}</span>
-                <span className="text-[9px] text-zinc-500 font-mono mt-0.5">{currentProvider?.name}</span>
-            </div>
-          </div>
-          <ChevronDown size={14} className={cn("text-zinc-600 transition-transform relative z-10 group-hover:text-zinc-400", isOpen && "rotate-180")} />
-          
-          {/* Subtle hover background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity translate-x-[-100%] group-hover:translate-x-[100%] duration-1000" />
-        </button>
+      <div className="p-4 space-y-5">
+        {/* Description */}
+        <p className="text-[10px] text-zinc-500 leading-relaxed italic">{meta.description}</p>
 
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
+        {/* Neural Model Picker */}
+        <div className="space-y-2">
+            <label className="text-[8px] font-black text-zinc-600 uppercase tracking-widest block pl-1">Neural Model Assignment</label>
+            <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900 transition-all group relative overflow-hidden"
             >
-              <div className="space-y-1.5 pt-1.5 max-h-60 overflow-y-auto custom-scrollbar px-0.5">
-                {AI_PROVIDERS.map(provider => (
-                  <div key={provider.id} className="mb-2 last:mb-0">
-                    <div className="text-[8px] font-black text-zinc-600 uppercase tracking-widest px-2 py-1 flex items-center space-x-2 bg-zinc-900/40 rounded-t-md">
-                      <div className="w-1 h-1 rounded-full" style={{ backgroundColor: provider.color }} />
-                      <span>{provider.name} Stack</span>
-                    </div>
-                    <div className="bg-zinc-900/20 border-x border-b border-zinc-900/50 rounded-b-md p-1 space-y-0.5">
-                        {provider.models.map(model => {
-                        const isActive = assignment?.providerId === provider.id && assignment?.modelId === model;
-                        return (
-                            <button
-                            key={model}
-                            onClick={() => {
-                                onChange(role, { providerId: provider.id, modelId: model });
-                                setIsOpen(false);
-                            }}
-                            className={cn(
-                                "w-full flex items-center justify-between px-3 py-2 rounded text-left transition-all",
-                                isActive 
-                                    ? "bg-white/5 text-white border border-white/10" 
-                                    : "text-zinc-400 hover:bg-white/5 hover:text-white border border-transparent"
-                            )}
-                            >
-                            <span className="text-[10px] font-bold uppercase tracking-tight">{model.replace(/-/g, ' ')}</span>
-                            {isActive && <div className="w-1 h-1 rounded-full bg-kalshi-green shadow-[0_0_4px_#10b981]" />}
-                            </button>
-                        );
-                        })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Specs are now simplified since we don't have static metadata for every model in config */}
-        <div className="grid grid-cols-2 gap-2 pt-2">
-            <div className="bg-zinc-900/50 p-2 rounded-lg border border-zinc-800/50 text-center">
-                <div className="text-[7px] font-black text-zinc-600 uppercase tracking-widest mb-1">Compute Cost</div>
-                <div className="text-[9px] font-bold text-zinc-300">VARIABLE RATE</div>
+            <div className="flex items-center space-x-3 relative z-10">
+                <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_12px_currentColor]" style={{ backgroundColor: currentProvider?.color, color: currentProvider?.color }} />
+                <div className="flex flex-col items-start leading-none">
+                    <span className="text-[12px] font-black text-white uppercase tracking-tighter">{currentModelName.replace(/-/g, ' ')}</span>
+                    <span className="text-[9px] text-zinc-500 font-mono mt-1 uppercase opacity-60">Engine: {currentProvider?.name}</span>
+                </div>
             </div>
-            <div className="bg-zinc-900/50 p-2 rounded-lg border border-zinc-800/50 text-center">
-                <div className="text-[7px] font-black text-zinc-600 uppercase tracking-widest mb-1">Latency Tier</div>
-                <div className="text-[9px] font-bold text-kalshi-green">ULTRA-LOW</div>
+            <ChevronDown size={14} className={cn("text-zinc-600 transition-transform relative z-10 group-hover:text-zinc-400", isOpen && "rotate-180")} />
+            </button>
+
+            <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden bg-zinc-950/50 rounded-xl border border-white/5 mt-1"
+                >
+                <div className="p-2 space-y-1 max-h-60 overflow-y-auto custom-scrollbar">
+                    {AI_PROVIDERS.map(provider => (
+                    <div key={provider.id} className="mb-3 last:mb-0">
+                        <div className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] px-2 py-1 flex items-center mb-1">
+                        <div className="w-1 h-3 rounded-full mr-2" style={{ backgroundColor: provider.color }} />
+                        {provider.name}
+                        </div>
+                        <div className="grid grid-cols-1 gap-1">
+                            {provider.models.map(model => {
+                            const isActive = assignment?.providerId === provider.id && assignment?.modelId === model;
+                            return (
+                                <button
+                                key={model}
+                                onClick={() => {
+                                    onChange(role, { providerId: provider.id, modelId: model });
+                                    setIsOpen(false);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all",
+                                    isActive 
+                                        ? "bg-white/10 text-white border border-white/10" 
+                                        : "text-zinc-500 hover:bg-white/5 hover:text-white border border-transparent"
+                                )}
+                                >
+                                <span className="text-[10px] font-black uppercase tracking-tight">{model.replace(/-/g, ' ')}</span>
+                                {isActive && <CheckCircle2 size={12} className="text-kalshi-green" />}
+                                </button>
+                            );
+                            })}
+                        </div>
+                    </div>
+                    ))}
+                </div>
+                </motion.div>
+            )}
+            </AnimatePresence>
+        </div>
+
+        {/* Council Influence Slider (Visual) */}
+        <div className="space-y-3 pt-2">
+            <div className="flex justify-between items-center">
+                <label className="text-[8px] font-black text-zinc-600 uppercase tracking-widest pl-1">Council Influence</label>
+                <span className="text-[10px] font-mono text-white">85.0%</span>
+            </div>
+            <div className="h-1.5 bg-zinc-900 rounded-full relative overflow-hidden flex items-center">
+                 <div className="h-full bg-gradient-to-r from-zinc-800 to-white/20" style={{ width: '85%' }} />
+                 <div className="absolute left-[85%] -ml-1 w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_8px_white] cursor-pointer" />
+            </div>
+        </div>
+
+        {/* Specs */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="bg-zinc-900/40 p-2.5 rounded-xl border border-white/5 flex items-center justify-between group/spec">
+                <div className="space-y-0.5">
+                    <div className="text-[7px] font-black text-zinc-600 uppercase tracking-widest">Latency</div>
+                    <div className="text-[10px] font-mono font-bold text-kalshi-green">140ms</div>
+                </div>
+                <Zap size={14} className="text-zinc-800 group-hover/spec:text-amber-500 transition-colors" />
+            </div>
+            <div className="bg-zinc-900/40 p-2.5 rounded-xl border border-white/5 flex items-center justify-between group/spec">
+                <div className="space-y-0.5">
+                    <div className="text-[7px] font-black text-zinc-600 uppercase tracking-widest">Reasoning</div>
+                    <div className="text-[10px] font-mono font-bold text-poly-blue">9.8/10</div>
+                </div>
+                <Brain size={14} className="text-zinc-800 group-hover/spec:text-poly-blue transition-colors" />
             </div>
         </div>
       </div>

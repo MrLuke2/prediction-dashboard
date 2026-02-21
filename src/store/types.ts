@@ -90,6 +90,7 @@ export interface TradeState {
     addLog: (log: LogEntry) => void;
     updateTrade: (update: any) => void;
     submitTrade: (params: TradeParams) => void;
+    reAnalyze: (marketId: string) => void;
     setTradeStatus: (status: 'ACTIVE' | 'SUSPENDED') => void;
     toggleEmergency: (active: boolean) => void;
 }

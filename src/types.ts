@@ -66,5 +66,6 @@ export interface PnLData {
   timestamp: number;
   venue?: 'Polymarket' | 'Kalshi' | 'Cross-Venue';
   asset?: string;
+  side?: 'Buy' | 'Sell';
   executionTime?: string; // ms
 }
