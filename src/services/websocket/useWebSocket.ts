@@ -88,6 +88,17 @@ export const useWebSocket = () => {
             setLastPing(payload.ts);
         });
 
+        // Emergency Stop
+        const unsubEmergency = client.on(MessageType.EMERGENCY_STOP, (payload) => {
+            useTradeStore.getState().toggleEmergency(true);
+            addToast({
+                type: 'error',
+                title: 'Emergency Stop',
+                message: `System-wide halt: ${payload.reason}. ${payload.tradesAffected} trades neutralized.`,
+                duration: 15000
+            });
+        });
+
         client.connect();
 
         return () => {
@@ -100,6 +111,7 @@ export const useWebSocket = () => {
             unsubAlpha();
             unsubTrade();
             unsubPong();
+            unsubEmergency();
         };
     }, [jwt]);
 

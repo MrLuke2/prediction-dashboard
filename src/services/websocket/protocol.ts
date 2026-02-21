@@ -10,6 +10,7 @@ export enum MessageType {
   TRADE_UPDATE = 'TRADE_UPDATE',
   PONG = 'PONG',
   ERROR = 'ERROR',
+  EMERGENCY_STOP = 'EMERGENCY_STOP',
 
   // Client -> Server
   SUBSCRIBE_MARKET = 'SUBSCRIBE_MARKET',
@@ -60,6 +61,11 @@ export interface ErrorMessage extends BaseMessage {
   payload: { code: string; message: string };
 }
 
+export interface EmergencyStopMessage extends BaseMessage {
+  type: MessageType.EMERGENCY_STOP;
+  payload: { reason: string; tradesAffected: number; timestamp: string };
+}
+
 // Client -> Server Messages
 export interface SubscribeMarketMessage extends BaseMessage {
   type: MessageType.SUBSCRIBE_MARKET | MessageType.UNSUBSCRIBE_MARKET;
@@ -83,7 +89,8 @@ export type ServerMessage =
   | AlphaUpdateMessage 
   | TradeUpdateMessage 
   | PongMessage 
-  | ErrorMessage;
+  | ErrorMessage
+  | EmergencyStopMessage;
 
 export type ClientMessage = 
   | SubscribeMarketMessage 
@@ -113,6 +120,8 @@ export function isValidPayload(type: MessageType, payload: any): boolean {
       return typeof payload.ts === 'number';
     case MessageType.ERROR:
       return typeof payload.code === 'string' && typeof payload.message === 'string';
+    case MessageType.EMERGENCY_STOP:
+      return typeof payload.reason === 'string' && typeof payload.tradesAffected === 'number';
     default:
       return true;
   }

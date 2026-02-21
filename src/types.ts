@@ -16,10 +16,13 @@ export enum LogLevel {
 export interface LogEntry {
   id: string;
   timestamp: string;
-  agent: AgentRole;
+  agent: AgentRole | string;
   message: string;
   level: LogLevel;
   providerId?: string;
+  agentProvider?: string;
+  model?: string;
+  latency_ms?: number;
 }
 
 export interface MarketPair {
@@ -57,16 +60,25 @@ export interface AlphaMetric {
     sentiment: { score: number; providerId: string };
     risk: { score: number; providerId: string };
   };
+  generatedBy?: string;
+  contributing_agents?: {
+    agent: string;
+    provider: string;
+    model: string;
+    score: number;
+  }[];
 }
 
 export interface PnLData {
   amount: number;
   roi: number;
+  pnl?: number;
   tradeId: string;
   timestamp: number;
   venue?: 'Polymarket' | 'Kalshi' | 'Cross-Venue';
   asset?: string;
-  side?: 'Buy' | 'Sell';
-  status?: 'open' | 'closed';
+  side?: 'Buy' | 'Sell' | 'buy' | 'sell';
+  status?: 'open' | 'closed' | 'failed' | 'emergency_closed';
   executionTime?: string; // ms
+  aiProvider?: string;
 }
