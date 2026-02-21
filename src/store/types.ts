@@ -34,6 +34,7 @@ export interface UIState {
     isAuthenticated: boolean;
     isSettingsOpen: boolean;
     agentModels: AgentModelConfig;
+    wsConnectionState: 'connecting' | 'connected' | 'disconnected' | 'error';
     setTutorialOpen: (open: boolean) => void;
     setAuthOpen: (open: boolean) => void;
     setBooting: (booting: boolean) => void;
@@ -48,6 +49,7 @@ export interface UIState {
     clearAuth: () => void;
     setSettingsOpen: (open: boolean) => void;
     setAgentModel: (role: AgentConfigRole, assignment: AgentModelAssignment) => void;
+    setWSConnectionState: (state: 'connecting' | 'connected' | 'disconnected' | 'error') => void;
 }
 
 export interface LayoutState {

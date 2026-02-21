@@ -15,12 +15,12 @@ export const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
   
   const getIcon = () => {
     switch (toast.type) {
-      case 'success': return <CheckCircle size={18} className="text-kalshi-green" />;
-      case 'error': return <XCircle size={18} className="text-kalshi-red" />;
-      case 'warning': return <AlertTriangle size={18} className="text-amber-500" />;
-      case 'trade': return <TrendingUp size={18} className="text-kalshi-green shadow-[0_0_8px_currentColor]" />;
-      case 'agent': return provider ? <Brain size={18} style={{ color: provider.color }} /> : <Cpu size={18} className="text-poly-blue" />;
-      default: return <Info size={18} className="text-poly-blue" />;
+      case 'success': return <CheckCircle size={18} className="text-kalshi-green" data-testid="toast-icon-success" />;
+      case 'error': return <XCircle size={18} className="text-kalshi-red" data-testid="toast-icon-error" />;
+      case 'warning': return <AlertTriangle size={18} className="text-amber-500" data-testid="toast-icon-warning" />;
+      case 'trade': return <TrendingUp size={18} className="text-kalshi-green shadow-[0_0_8px_currentColor]" data-testid="toast-icon-trade" />;
+      case 'agent': return provider ? <Brain size={18} style={{ color: provider.color }} data-testid="toast-icon-agent" /> : <Cpu size={18} className="text-poly-blue" data-testid="toast-icon-agent" />;
+      default: return <Info size={18} className="text-poly-blue" data-testid="toast-icon-info" />;
     }
   };
 

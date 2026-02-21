@@ -1,16 +1,26 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MarketSearch } from '../MarketSearch';
 import { resetStores } from '../../../../test/mocks/storeDefaults';
 import { useMarketStore } from '../../../../store';
 
-describe.skip('MarketSearch', () => {
+describe('MarketSearch', () => {
     beforeEach(() => {
         resetStores();
-        vi.useFakeTimers();
     });
 
+    const matchText = (text: string) => (_: string, node: Element | null) => {
+        const hasText = (n: Element | null) => n?.textContent?.trim() === text;
+        const nodeHasText = hasText(node);
+        const childrenDontHaveText = Array.from(node?.children || []).every(
+          child => !hasText(child as Element)
+        );
+        return nodeHasText && childrenDontHaveText;
+    };
+
     it('should display search results when typing', async () => {
+        const user = userEvent.setup();
         const mockMarkets = [
             { symbol: 'BTC-USD', polymarketPrice: 0.5, kalshiPrice: 0.4, spread: 0.1 },
             { symbol: 'ETH-USD', polymarketPrice: 0.6, kalshiPrice: 0.5, spread: 0.1 }
@@ -20,82 +30,76 @@ describe.skip('MarketSearch', () => {
         render(<MarketSearch />);
         
         const input = screen.getByPlaceholderText(/Search Markets/i);
-        await act(async () => {
-            fireEvent.focus(input);
-            fireEvent.change(input, { target: { value: 'BTC' } });
-           // Wait for debounce
-        });
-        await act(async () => {
-            vi.advanceTimersByTime(200);
-        });
-
-        screen.debug();
-        expect(await screen.findByText('BTC-USD')).toBeInTheDocument();
-        expect(screen.queryByText('ETH-USD')).not.toBeInTheDocument();
+        await user.click(input);
+        await user.type(input, 'BTC');
+        
+        expect(await screen.findByText(matchText('BTC-USD'))).toBeInTheDocument();
+        expect(screen.queryByText(matchText('ETH-USD'))).not.toBeInTheDocument();
     });
 
     it('should handle keyboard navigation', async () => {
+        const user = userEvent.setup();
         const mockMarkets = [
             { symbol: 'MARKET-1', spread: 0.1 },
             { symbol: 'MARKET-2', spread: 0.1 }
         ];
-        useMarketStore.setState({ marketData: mockMarkets as any });
+        const setSelectedMarketSpy = vi.fn();
+        useMarketStore.setState({ 
+            marketData: mockMarkets as any,
+            setSelectedMarket: setSelectedMarketSpy
+        });
 
         render(<MarketSearch />);
         
         const input = screen.getByPlaceholderText(/Search Markets/i);
-        await act(async () => {
-            fireEvent.focus(input);
-            fireEvent.change(input, { target: { value: 'MARKET' } });
-            vi.advanceTimersByTime(200);
-        });
+        await user.click(input);
+        await user.type(input, 'MARKET');
 
-        // Initially first item is selected
+        // Wait for results
         const options = await screen.findAllByRole('option');
         expect(options[0]).toHaveAttribute('aria-selected', 'true');
 
         // Press ArrowDown
-        await act(async () => {
-            fireEvent.keyDown(input, { key: 'ArrowDown' });
-        });
+        await user.keyboard('{ArrowDown}');
         
-        expect(options[0]).toHaveAttribute('aria-selected', 'false');
-        expect(options[1]).toHaveAttribute('aria-selected', 'true');
+        await waitFor(async () => {
+            const currentOptions = await screen.findAllByRole('option');
+            expect(currentOptions[1]).toHaveAttribute('aria-selected', 'true');
+        });
 
         // Press Enter to select
-        const setSelectedMarketSpy = vi.spyOn(useMarketStore.getState(), 'setSelectedMarket');
-        await act(async () => {
-            fireEvent.keyDown(input, { key: 'Enter' });
-        });
+        fireEvent.keyDown(input, { key: 'Enter' });
         
-        expect(setSelectedMarketSpy).toHaveBeenCalledWith(mockMarkets[1]);
+        await waitFor(() => {
+            expect(setSelectedMarketSpy).toHaveBeenCalled();
+        }, { timeout: 2000 });
+        
+        expect(setSelectedMarketSpy).toHaveBeenCalledWith(expect.objectContaining({ symbol: 'MARKET-2' }));
     });
 
     it('should persist and show recent searches', async () => {
+        const user = userEvent.setup();
         const mockMarket = { symbol: 'RECENT-1', spread: 0.1 };
         useMarketStore.setState({ marketData: [mockMarket] as any });
 
         const { unmount } = render(<MarketSearch />);
         
         const input = screen.getByPlaceholderText(/Search Markets/i);
-        await act(async () => {
-            fireEvent.focus(input);
-            fireEvent.change(input, { target: { value: 'RECENT' } });
-            vi.advanceTimersByTime(200);
-        });
+        await user.click(input);
+        await user.type(input, 'RECENT');
 
-        fireEvent.click(await screen.findByText('RECENT-1'));
+        const item = await screen.findByText(matchText('RECENT-1'));
+        await user.click(item);
 
         // Re-render to check persistence
         unmount();
         render(<MarketSearch />);
         
         const newInput = screen.getByPlaceholderText(/Search Markets/i);
-        await act(async () => {
-            fireEvent.focus(newInput);
-        });
+        fireEvent.focus(newInput);
         
-        expect(await screen.findByText('RECENT-1')).toBeInTheDocument();
-        expect(screen.getByText(/Recent Intel/i)).toBeInTheDocument();
+        // Use flexible matching for "Recent Intel" and "RECENT-1"
+        expect(await screen.findByText(/Recent Intel/i)).toBeInTheDocument();
+        expect(await screen.findByText(/RECENT-1/i)).toBeInTheDocument();
     });
 });

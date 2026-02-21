@@ -22,8 +22,7 @@ export class MockWebSocketClient {
   on = vi.fn(() => vi.fn());
   
   static simulateMessage(type: string, payload: any) {
-    // This helper would typically be used to trigger handlers in tests
-    // Implementing it depends on how the actual client is structured
+    // This helper would be implemented based on the actual client's event emitter or callback system
   }
 }
 
@@ -34,9 +33,8 @@ export const simulateWSMessage = (data: any) => {
   }
 };
 
-// Replace global WebSocket with a mock that sets the properties correctly
+// Replace global WebSocket
 vi.stubGlobal('WebSocket', vi.fn(() => mockWebSocket));
-// Add WebSocket constants
 (globalThis as any).WebSocket.OPEN = 1;
 (globalThis as any).WebSocket.CLOSED = 3;
 (globalThis as any).WebSocket.CONNECTING = 0;

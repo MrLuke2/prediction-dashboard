@@ -37,6 +37,7 @@ export class WebSocketClient {
 
     this.socket.onclose = () => {
       console.log('[WS] Disconnected');
+      this.socket = null;
       this.state = 'disconnected';
       this.stopHeartbeat();
       this.scheduleReconnect();

@@ -92,7 +92,7 @@ export type ClientMessage =
 
 // Manual Type Guards (In place of Zod)
 export function isServerMessage(data: any): data is ServerMessage {
-  return data && typeof data.type === 'string' && data.type in MessageType;
+  return !!(data && typeof data.type === 'string' && data.type in MessageType);
 }
 
 export function isValidPayload(type: MessageType, payload: any): boolean {

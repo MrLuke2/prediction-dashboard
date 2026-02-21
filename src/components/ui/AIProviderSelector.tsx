@@ -52,6 +52,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
       <div className="relative" ref={containerRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
+          data-testid="ai-provider-selector-trigger"
           className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-fin-border hover:border-zinc-600 transition-colors"
         >
           <div 
@@ -80,6 +81,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
                   <div key={provider.id} className="space-y-1">
                     <button
                       onClick={() => handleProviderSelect(provider.id)}
+                      data-testid={`ai-provider-option-${provider.id}`}
                       className={cn(
                         "w-full flex items-center justify-between p-2 rounded-lg transition-all group",
                         aiProvider.providerId === provider.id 
@@ -109,6 +111,7 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({ mode = '
                             <button
                               key={model}
                               onClick={() => handleModelSelect(provider.id, model)}
+                              data-testid={`ai-model-option-${model}`}
                               className={cn(
                                 "px-2 py-1 rounded text-[9px] font-bold transition-colors",
                                 aiProvider.model === model 

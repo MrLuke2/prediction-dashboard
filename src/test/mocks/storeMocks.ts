@@ -1,10 +1,12 @@
 import { useUIStore, useLayoutStore, useMarketStore, useTradeStore, useNotificationStore } from '../../store';
 import { UIState, LayoutState, MarketState, TradeState, NotificationState } from '../../store/types';
 import { INITIAL_MARKET_DATA } from '../../constants';
+import { AIProviderSelection } from '../../config/aiProviders';
 
-export const mockAIProvider = { 
-  providerId: 'gemini' as const, 
-  model: 'gemini-2.5-flash' 
+// anthropic/claude-sonnet-4-5 as requested
+export const mockAIProvider: AIProviderSelection = { 
+  providerId: 'anthropic', 
+  model: 'claude-sonnet-4-5' 
 };
 
 export const createUIState = (overrides?: Partial<UIState>): UIState => ({
@@ -17,10 +19,17 @@ export const createUIState = (overrides?: Partial<UIState>): UIState => ({
   isSearchFocused: false,
   logs: [],
   mobileTab: 'overview',
-  aiProvider: { providerId: 'gemini', model: 'gemini-2.5-flash' },
+  aiProvider: mockAIProvider,
   jwt: null,
   user: null,
+  isAuthenticated: false,
   isSettingsOpen: false,
+  agentModels: {
+    fundamentalist: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
+    sentiment: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
+    risk: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' }
+  },
+  wsConnectionState: 'disconnected',
   setTutorialOpen: () => {},
   setAuthOpen: () => {},
   setBooting: () => {},
@@ -34,12 +43,15 @@ export const createUIState = (overrides?: Partial<UIState>): UIState => ({
   setAuth: () => {},
   clearAuth: () => {},
   setSettingsOpen: () => {},
+  setAgentModel: () => {},
+  setWSConnectionState: () => {},
   ...overrides,
 });
 
 export const createLayoutState = (overrides?: Partial<LayoutState>): LayoutState => ({
   slots: {
-    left: 'newsFeed',
+    leftTop: 'newsFeed',
+    leftBottom: 'correlationHeatmap',
     centerTopLeft: 'alphaGauge',
     centerTopRight: 'btcTracker',
     centerBottomLeft: 'pnlCard',
@@ -53,9 +65,9 @@ export const createLayoutState = (overrides?: Partial<LayoutState>): LayoutState
 });
 
 export const createMarketState = (overrides?: Partial<MarketState>): MarketState => ({
-  marketData: [],
+  marketData: INITIAL_MARKET_DATA,
   selectedMarket: null,
-  alphaMetric: { probability: 50, trend: 'stable' },
+  alphaMetric: { probability: 50, trend: 'stable', history: [] },
   whaleData: [],
   setSelectedMarket: () => {},
   setMarketData: () => {},
@@ -70,6 +82,8 @@ export const createTradeState = (overrides?: Partial<TradeState>): TradeState =>
   tradeHistory: [],
   lastPnL: null,
   pendingTrade: null,
+  tradeStatus: 'ACTIVE',
+  emergencyActive: false,
   setDisplayedPnL: () => {},
   setTradeHistory: () => {},
   setLastPnL: () => {},
@@ -77,6 +91,9 @@ export const createTradeState = (overrides?: Partial<TradeState>): TradeState =>
   addLog: () => {},
   updateTrade: () => {},
   submitTrade: () => {},
+  reAnalyze: () => {},
+  setTradeStatus: () => {},
+  toggleEmergency: () => {},
   ...overrides,
 });
 
@@ -89,47 +106,57 @@ export const createNotificationState = (overrides?: Partial<NotificationState>):
 });
 
 export const resetAllStores = () => {
-  useUIStore.setState({
-    isTutorialOpen: false,
-    isAuthOpen: false,
-    isBooting: false,
-    isEditMode: false,
-    swapSource: null,
-    searchQuery: '',
-    isSearchFocused: false,
-    logs: [],
-    mobileTab: 'overview',
-    aiProvider: { providerId: 'gemini', model: 'gemini-2.5-flash' },
-    jwt: null,
-    user: null,
-    isSettingsOpen: false,
-  });
+    useUIStore.setState({
+      isTutorialOpen: false,
+      isAuthOpen: false,
+      isBooting: false,
+      isEditMode: false,
+      swapSource: null,
+      searchQuery: '',
+      isSearchFocused: false,
+      logs: [],
+      mobileTab: 'overview',
+      aiProvider: mockAIProvider,
+      jwt: null,
+      user: null,
+      isAuthenticated: false,
+      isSettingsOpen: false,
+      agentModels: {
+        fundamentalist: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
+        sentiment: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' },
+        risk: { providerId: 'anthropic', modelId: 'claude-sonnet-4-5' }
+      },
+      wsConnectionState: 'disconnected'
+    });
 
-  useLayoutStore.setState({
-    slots: {
-        left: 'newsFeed',
+    useLayoutStore.setState({
+      slots: {
+        leftTop: 'newsFeed',
+        leftBottom: 'correlationHeatmap',
         centerTopLeft: 'alphaGauge',
         centerTopRight: 'btcTracker',
         centerBottomLeft: 'pnlCard',
         centerBottomRight: 'tradeHistory',
         rightTop: 'whaleRadar',
         rightBottom: 'liveFeed'
-    }
-  });
+      }
+    });
 
-  useMarketStore.setState({
-    marketData: INITIAL_MARKET_DATA,
-    selectedMarket: null,
-    alphaMetric: { probability: 50, trend: 'stable' },
-    whaleData: [],
-  });
+    useMarketStore.setState({
+      marketData: INITIAL_MARKET_DATA,
+      selectedMarket: null,
+      alphaMetric: { probability: 50, trend: 'stable', history: [] },
+      whaleData: [],
+    });
 
-  useTradeStore.setState({
-    displayedPnL: null,
-    tradeHistory: [],
-    lastPnL: null,
-    pendingTrade: null,
-  });
+    useTradeStore.setState({
+      displayedPnL: null,
+      tradeHistory: [],
+      lastPnL: null,
+      pendingTrade: null,
+      tradeStatus: 'ACTIVE',
+      emergencyActive: false
+    });
 
-  useNotificationStore.getState().clearAll();
+    useNotificationStore.getState().clearAll();
 };

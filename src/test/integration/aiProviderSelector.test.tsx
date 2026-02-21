@@ -3,9 +3,10 @@ import { render, screen, cleanup } from '@testing-library/react';
 import React from 'react';
 import userEvent from '@testing-library/user-event';
 import { AIProviderSelector } from '../../components/ui/AIProviderSelector';
-import { useUIStore } from '../../store';
+import { useUIStore, useNotificationStore } from '../../store';
 import { resetAllStores } from '../mocks/storeMocks';
 import { ToastContainer } from '../../components/ui/Toast/ToastContainer';
+import { AI_PROVIDERS } from '../../config/aiProviders';
 
 describe('AIProviderSelector Integration', () => {
   beforeEach(() => {
@@ -14,28 +15,28 @@ describe('AIProviderSelector Integration', () => {
     vi.clearAllMocks();
   });
 
-  it('renders in compact mode by default', () => {
+  it('Renders in compact mode by default', () => {
     render(<AIProviderSelector mode="compact" />);
-    // Initial provider name is 'Claude'
+    // Current default from storeMocks is Anthropic
     expect(screen.getByText(/Claude/)).toBeInTheDocument();
   });
 
-  it('opens panel and shows all 3 providers', async () => {
+  it('Opens panel showing 3 providers', async () => {
     const user = userEvent.setup();
     render(<AIProviderSelector mode="compact" />);
     
     const trigger = screen.getByTestId('ai-provider-selector-trigger');
     await user.click(trigger);
     
-    // Check for options by test ID
-    expect(screen.getByTestId('ai-provider-option-anthropic')).toBeInTheDocument();
-    expect(screen.getByTestId('ai-provider-option-openai')).toBeInTheDocument();
-    expect(screen.getByTestId('ai-provider-option-gemini')).toBeInTheDocument();
+    AI_PROVIDERS.forEach(provider => {
+        expect(screen.getByTestId(`ai-provider-option-${provider.id}`)).toBeInTheDocument();
+    });
   });
 
-  it('updates store and fires toast when selecting Gemini', async () => {
+  it('Selecting Gemini -> store updates -> toast fires', async () => {
     const user = userEvent.setup();
     
+    // We need both the selector and the container to see the toast
     render(
       <>
         <ToastContainer />
@@ -46,43 +47,44 @@ describe('AIProviderSelector Integration', () => {
     const trigger = screen.getByTestId('ai-provider-selector-trigger');
     await user.click(trigger);
     
-    // Select Gemini option
     const geminiOption = screen.getByTestId('ai-provider-option-gemini');
     await user.click(geminiOption);
     
     expect(useUIStore.getState().aiProvider.providerId).toBe('gemini');
     
-    // Check if toast appeared in UI
-    expect(screen.getByText('Agent Synchronized')).toBeInTheDocument();
-    expect(screen.getByText(/Gemini agents active/i)).toBeInTheDocument();
+    // Check for toast title which is 'AI Provider Switched' (from useUIStore.setAIProvider)
+    expect(screen.getByText('AI Provider Switched')).toBeInTheDocument();
   });
 
-  it('allows model selection per provider', async () => {
+  it('Model sub-selector works per provider', async () => {
     const user = userEvent.setup();
     render(<AIProviderSelector mode="compact" />);
     
     const trigger = screen.getByTestId('ai-provider-selector-trigger');
     await user.click(trigger);
     
-    // Select Gemini provider
-    await user.click(screen.getByTestId('ai-provider-option-gemini'));
+    // Select OpenAI provider
+    const openaiOption = screen.getByTestId('ai-provider-option-openai');
+    await user.click(openaiOption);
     
-    // Select model
-    const select = screen.getByTestId('ai-model-select');
-    await user.selectOptions(select, 'gemini-1.5-pro');
+    // Select model 'gpt-4o'
+    const modelOption = screen.getByTestId('ai-model-option-gpt-4o');
+    await user.click(modelOption);
     
-    expect(useUIStore.getState().aiProvider.model).toBe('gemini-1.5-pro');
+    expect(useUIStore.getState().aiProvider.model).toBe('gpt-4o');
   });
 
-  it('persists selection to localStorage', async () => {
+  it('Selection persists on page reload (localStorage)', async () => {
     const user = userEvent.setup();
     render(<AIProviderSelector mode="compact" />);
     
     const trigger = screen.getByTestId('ai-provider-selector-trigger');
     await user.click(trigger);
-    await user.click(screen.getByTestId('ai-provider-option-openai'));
+    
+    const geminiOption = screen.getByTestId('ai-provider-option-gemini');
+    await user.click(geminiOption);
     
     const stored = JSON.parse(localStorage.getItem('ui-storage') || '{}');
-    expect(stored.state.aiProvider.providerId).toBe('openai');
+    expect(stored.state.aiProvider.providerId).toBe('gemini');
   });
 });

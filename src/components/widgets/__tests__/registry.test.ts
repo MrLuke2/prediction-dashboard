@@ -10,12 +10,13 @@ describe('WidgetRegistry', () => {
         'whaleRadar',
         'newsFeed',
         'pnlCard',
-        'tradeHistory'
+        'tradeHistory',
+        'correlationHeatmap'
     ];
 
-    it('should contain all 7 required widget types', () => {
+    it('should contain all 8 required widget types', () => {
         const registeredKeys = Object.keys(WIDGET_REGISTRY);
-        expect(registeredKeys.length).toBe(7);
+        expect(registeredKeys.length).toBe(8);
         requiredTypes.forEach(type => {
             expect(registeredKeys).toContain(type);
         });

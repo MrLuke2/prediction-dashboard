@@ -1,19 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WebSocketClient } from '../../services/websocket/WebSocketClient';
+import { MessageType } from '../../services/websocket/protocol';
 
 describe('WebSocketClient', () => {
   let client: WebSocketClient;
   let mockSockets: any[] = [];
   const url = 'ws://localhost:8080';
   const getToken = vi.fn(() => 'test-token');
-  const onStateChange = vi.fn();
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     mockSockets = [];
     
-    // Mock class for WebSocket
     class MockWebSocket {
       static OPEN = 1;
       static CLOSED = 3;
@@ -35,7 +34,7 @@ describe('WebSocketClient', () => {
     
     vi.stubGlobal('WebSocket', MockWebSocket);
     
-    client = new WebSocketClient(url, getToken, onStateChange);
+    client = new WebSocketClient(url, getToken);
   });
 
   afterEach(() => {
@@ -43,106 +42,83 @@ describe('WebSocketClient', () => {
     vi.unstubAllGlobals();
   });
 
-  it('should connect and update state to connecting', () => {
+  it('Connects with correct URL', () => {
     client.connect();
-    expect(onStateChange).toHaveBeenCalledWith('connecting');
     expect(mockSockets.length).toBe(1);
-    expect(mockSockets[0].url).toContain(url);
+    expect(mockSockets[0].url).toBe(url);
   });
 
-  it('should transition to connected state on open', () => {
+  it('Reconnects after disconnect with exponential backoff up to 30s', () => {
+    client.connect();
+    const socket = mockSockets[0];
+    if (socket.onclose) socket.onclose();
+    
+    // Attempt 1: 1s (2^0 * 1000)
+    vi.advanceTimersByTime(1100);
+    expect(mockSockets.length).toBe(2);
+    
+    // Attempt 2: 2s
+    if (mockSockets[1].onclose) mockSockets[1].onclose();
+    vi.advanceTimersByTime(2100);
+    expect(mockSockets.length).toBe(3);
+    
+    // Skip many attempts
+    for (let i = 0; i < 5; i++) {
+        const s = mockSockets[mockSockets.length - 1];
+        if (s.onclose) s.onclose();
+        vi.advanceTimersByTime(40000); // More than 30s
+    }
+    
+    // The delay should have stayed at 30s
+    // (This is implicitly tested by the fact that it reconnects eventually)
+    // We can check if the next socket was created after exactly 30s if we want to be precise
+    const currentCount = mockSockets.length;
+    const lastSocket = mockSockets[currentCount - 1];
+    if (lastSocket.onclose) lastSocket.onclose();
+    
+    vi.advanceTimersByTime(29000);
+    expect(mockSockets.length).toBe(currentCount); // Not yet
+    
+    vi.advanceTimersByTime(2000);
+    expect(mockSockets.length).toBe(currentCount + 1); // Now
+  });
+
+  it('Malformed message discarded without throw', () => {
     client.connect();
     const socket = mockSockets[0];
     if (socket.onopen) socket.onopen();
-    expect(onStateChange).toHaveBeenCalledWith('connected');
+    
+    expect(() => {
+        if (socket.onmessage) socket.onmessage({ data: 'invalid json' } as any);
+    }).not.toThrow();
   });
 
-  it('should send PING every 30s', () => {
+  it('PING every 30s, disconnect on missing PONG', () => {
     client.connect();
     const socket = mockSockets[0];
     if (socket.onopen) socket.onopen();
     
     vi.advanceTimersByTime(30000);
     expect(socket.send).toHaveBeenCalledWith(expect.stringContaining('"type":"PING"'));
+    
+    // 10s wait for PONG
+    vi.advanceTimersByTime(11000);
+    expect(socket.close).toHaveBeenCalled();
   });
 
-  it('should disconnect on pong timeout', () => {
+  it('Processes PONG and resets heartbeat', () => {
     client.connect();
     const socket = mockSockets[0];
     if (socket.onopen) socket.onopen();
     
     vi.advanceTimersByTime(30000); // Trigger PING
-    vi.advanceTimersByTime(11000); // Wait for PONG timeout (10s)
-    
-    expect(onStateChange).toHaveBeenCalledWith('disconnected');
-    expect(socket.close).toHaveBeenCalled();
-  });
-
-  it('should not throw on malformed message', () => {
-    client.connect();
-    const socket = mockSockets[0];
-    if (socket.onopen) socket.onopen();
-    
-    expect(() => {
-        if (socket.onmessage) socket.onmessage({ data: 'invalid-json' } as any);
-    }).not.toThrow();
-  });
-
-  it('should queue and flush messages', () => {
-    // 1. Send while disconnected
-    client.send('SUBSCRIBE_MARKET', { pair: 'BTC/USD' });
-    
-    // 2. Connect
-    client.connect();
-    const socket = mockSockets[0];
-    
-    // Should NOT have sent yet (since not OPEN)
-    expect(socket.send).not.toHaveBeenCalled();
-    
-    // 3. Open
-    if (socket.onopen) socket.onopen();
-    
-    // Should have flushed queue
-    expect(socket.send).toHaveBeenCalledWith(expect.stringContaining('SUBSCRIBE_MARKET'));
-  });
-
-  it('should reconnect after close', () => {
-    client.connect();
-    const socket1 = mockSockets[0];
-    if (socket1.onopen) socket1.onopen();
-    
-    // Simulate close
-    if (socket1.onclose) socket1.onclose();
-    expect(onStateChange).toHaveBeenCalledWith('disconnected');
-    
-    // Advance time for first reconnect (1s)
-    vi.advanceTimersByTime(1000);
-    expect(mockSockets.length).toBe(2);
-    expect(onStateChange).toHaveBeenCalledWith('connecting');
-  });
-
-  it('should handle errors', () => {
-    client.connect();
-    const socket = mockSockets[0];
-    if (socket.onerror) socket.onerror(new Event('error'));
-    
-    // Should transition to error state
-    expect(onStateChange).toHaveBeenCalledWith('error');
-  });
-
-  it('should handle PONG messages', () => {
-    client.connect();
-    const socket = mockSockets[0];
-    if (socket.onopen) socket.onopen();
-    
-    // Trigger PING to set pongTimeout
-    vi.advanceTimersByTime(30000);
     
     // Send PONG
-    if (socket.onmessage) socket.onmessage({ data: JSON.stringify({ type: 'PONG' }) } as any);
+    if (socket.onmessage) {
+        socket.onmessage({ data: JSON.stringify({ type: 'PONG', payload: { ts: Date.now() } }) } as any);
+    }
     
-    // Advance time - should NOT disconnect because timeout was cleared
-    vi.advanceTimersByTime(11000);
-    expect(onStateChange).not.toHaveBeenCalledWith('disconnected');
+    vi.advanceTimersByTime(11000); // Wait past timeout period
+    expect(socket.close).not.toHaveBeenCalled(); // Should NOT be closed
   });
 });

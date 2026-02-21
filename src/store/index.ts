@@ -37,6 +37,7 @@ export const useUIStore = create<UIState>()(
                 sentiment: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
                 risk: { providerId: 'gemini', modelId: 'gemini-2.5-flash' }
             },
+            wsConnectionState: 'disconnected',
             setTutorialOpen: (open) => set({ isTutorialOpen: open }),
             setAuthOpen: (open) => set({ isAuthOpen: open }),
             setBooting: (booting) => set({ isBooting: booting }),
@@ -71,6 +72,7 @@ export const useUIStore = create<UIState>()(
             setAgentModel: (role, assignment) => set((state) => ({
                 agentModels: { ...state.agentModels, [role]: assignment }
             })),
+            setWSConnectionState: (state) => set({ wsConnectionState: state }),
         }),
         {
             name: 'ui-storage',

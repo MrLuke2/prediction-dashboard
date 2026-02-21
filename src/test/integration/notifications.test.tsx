@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, cleanup } from '@testing-library/react';
 import React from 'react';
 import { ToastContainer } from '../../components/ui/Toast/ToastContainer';
 import { useNotificationStore, useUIStore } from '../../store';
@@ -7,6 +7,7 @@ import { resetAllStores } from '../mocks/storeMocks';
 
 describe('Notifications Integration', () => {
   beforeEach(() => {
+    cleanup();
     resetAllStores();
     vi.useFakeTimers();
   });
@@ -15,7 +16,7 @@ describe('Notifications Integration', () => {
     vi.useRealTimers();
   });
 
-  it('renders a toast when addToast is called', async () => {
+  it('addToast renders in ToastContainer', async () => {
     render(<ToastContainer />);
     
     act(() => {
@@ -29,7 +30,7 @@ describe('Notifications Integration', () => {
     expect(screen.getByText('New Notification')).toBeInTheDocument();
   });
 
-  it('auto-dismisses toast after duration', async () => {
+  it('Auto-dismisses after duration (fake timers)', async () => {
     render(<ToastContainer />);
     
     act(() => {
@@ -49,7 +50,7 @@ describe('Notifications Integration', () => {
     expect(screen.queryByText('Temporary')).not.toBeInTheDocument();
   });
 
-  it('whale alert shows warning toast', () => {
+  it('Whale alert -> warning toast', () => {
     render(<ToastContainer />);
     
     act(() => {
@@ -61,43 +62,36 @@ describe('Notifications Integration', () => {
     });
     
     expect(screen.getByText('Whale Alert')).toBeInTheDocument();
-    const icon = screen.getByTestId('toast-icon-warning');
-    expect(icon).toBeInTheDocument();
+    expect(screen.getByTestId('toast-icon-warning')).toBeInTheDocument();
   });
 
-  it('AI provider switch shows agent toast with provider name', () => {
+  it('AI provider switch -> agent toast with provider name', () => {
     render(<ToastContainer />);
     
     act(() => {
-      useNotificationStore.getState().addToast({
-        type: 'agent',
-        title: 'Agent Synchronized',
-        message: 'Claude agents active',
-        providerId: 'anthropic'
-      });
+      useUIStore.getState().setAIProvider({ providerId: 'anthropic', model: 'claude-sonnet-4-5' });
     });
     
-    expect(screen.getByText('Agent Synchronized')).toBeInTheDocument();
-    expect(screen.getByText(/Claude/)).toBeInTheDocument();
+    expect(screen.getByText('AI Provider Switched')).toBeInTheDocument();
+    expect(screen.getByText(/Claude/i)).toBeInTheDocument();
   });
 
-  it('offline/online transitions show/dismiss error toast', () => {
+  it('Offline -> error toast, online -> dismisses it', () => {
+    // This integration depends on how offline status is tracked. 
+    // If it's via a hook that calls addToast, we test that flow.
     render(<ToastContainer />);
     
-    // Simulate offline
     let toastId: string = '';
     act(() => {
       toastId = useNotificationStore.getState().addToast({
         type: 'error',
         title: 'Connection Lost',
-        message: 'Real-time feed suspended',
         duration: Infinity
       });
     });
     
     expect(screen.getByText('Connection Lost')).toBeInTheDocument();
     
-    // Simulate online
     act(() => {
       useNotificationStore.getState().dismissToast(toastId);
     });

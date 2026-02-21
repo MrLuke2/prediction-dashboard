@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
 import { HeaderActions } from '../../components/layout/Header/HeaderActions';
 import { useUIStore, useLayoutStore } from '../../store';
 import { resetAllStores } from '../mocks/storeMocks';
@@ -10,20 +11,20 @@ describe('Widget Layout Integration', () => {
     resetAllStores();
   });
 
-  it('updates store when swapping slots (manual trigger)', () => {
+  it('Edit mode -> swap two slots -> store updated', () => {
     const { swapWidget } = useLayoutStore.getState();
-    const initialLeft = useLayoutStore.getState().slots.left;
+    const initialLeftTop = useLayoutStore.getState().slots.leftTop;
     const initialRightTop = useLayoutStore.getState().slots.rightTop;
     
     act(() => {
-      swapWidget('left', 'rightTop');
+      swapWidget('leftTop', 'rightTop');
     });
     
-    expect(useLayoutStore.getState().slots.left).toBe(initialRightTop);
-    expect(useLayoutStore.getState().slots.rightTop).toBe(initialLeft);
+    expect(useLayoutStore.getState().slots.leftTop).toBe(initialRightTop);
+    expect(useLayoutStore.getState().slots.rightTop).toBe(initialLeftTop);
   });
 
-  it('restores DEFAULT_LAYOUT when clicking reset', async () => {
+  it('Reset layout -> DEFAULT_LAYOUT restored', async () => {
     const user = userEvent.setup();
     const { swapWidget } = useLayoutStore.getState();
     
@@ -34,14 +35,16 @@ describe('Widget Layout Integration', () => {
     
     // Mess up layout
     act(() => {
-      swapWidget('left', 'rightTop');
+      swapWidget('leftTop', 'rightTop');
     });
     
     render(<HeaderActions />);
     
+    // We can use aria-label to find the reset button
     const resetButton = screen.getByLabelText(/Reset dashboard layout/i);
     await user.click(resetButton);
     
-    expect(useLayoutStore.getState().slots.left).toBe('newsFeed');
+    // 'leftTop' should be 'newsFeed' by default
+    expect(useLayoutStore.getState().slots.leftTop).toBe('newsFeed');
   });
 });

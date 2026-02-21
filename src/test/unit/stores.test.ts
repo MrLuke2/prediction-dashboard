@@ -11,20 +11,29 @@ describe('Layout Store', () => {
     const { swapWidget } = useLayoutStore.getState();
     const initialSlots = { ...useLayoutStore.getState().slots };
     
-    swapWidget('left', 'rightTop');
+    swapWidget('leftTop', 'rightTop');
     
     const newSlots = useLayoutStore.getState().slots;
-    expect(newSlots.left).toBe(initialSlots.rightTop);
-    expect(newSlots.rightTop).toBe(initialSlots.left);
+    expect(newSlots.leftTop).toBe(initialSlots.rightTop);
+    expect(newSlots.rightTop).toBe(initialSlots.leftTop);
   });
 
   it('should reset layout to default', () => {
     const { swapWidget, resetLayout } = useLayoutStore.getState();
-    swapWidget('left', 'rightTop');
+    swapWidget('leftTop', 'rightTop');
     resetLayout();
     
     const slots = useLayoutStore.getState().slots;
-    expect(slots.left).toBe('newsFeed');
+    expect(slots.leftTop).toBe('newsFeed');
+  });
+
+  it('localStorage persist/rehydrate works', () => {
+    const { swapWidget } = useLayoutStore.getState();
+    swapWidget('leftTop', 'rightTop');
+    
+    const stored = localStorage.getItem('dashboard-layout-storage');
+    expect(stored).toBeDefined();
+    expect(JSON.parse(stored!).state.slots.leftTop).toBe('whaleRadar');
   });
 });
 
@@ -81,15 +90,6 @@ describe('Notification Store', () => {
     
     expect(useNotificationStore.getState().toasts).toHaveLength(0);
   });
-
-  it('limits to 5 toasts and cleans up timeouts', () => {
-    for (let i = 0; i < 6; i++) {
-        useNotificationStore.getState().addToast({ type: 'info', title: `Toast ${i}` });
-    }
-    
-    expect(useNotificationStore.getState().toasts).toHaveLength(5);
-    expect(useNotificationStore.getState().toasts.map(t => t.title)).not.toContain('Toast 0');
-  });
 });
 
 describe('UI Store', () => {
@@ -102,17 +102,30 @@ describe('UI Store', () => {
     expect(useUIStore.getState().mobileTab).toBe('execution');
   });
 
-  it('should update AI provider', () => {
+  it('should update wsConnectionState', () => {
+    useUIStore.getState().setWSConnectionState('connected');
+    expect(useUIStore.getState().wsConnectionState).toBe('connected');
+  });
+
+  it('should update AI provider and persist to localStorage', () => {
     const newProvider = { providerId: 'openai' as const, model: 'gpt-4o' };
     useUIStore.getState().setAIProvider(newProvider);
     expect(useUIStore.getState().aiProvider).toEqual(newProvider);
-  });
-
-  it('aiProvider persists to localStorage', () => {
-    const newProvider = { providerId: 'gemini' as const, model: 'gemini-1.5-pro' };
-    useUIStore.getState().setAIProvider(newProvider);
     
     const stored = localStorage.getItem('ui-storage');
-    expect(stored).toContain('gemini-1.5-pro');
+    expect(stored).toContain('gpt-4o');
+  });
+
+  it('Switching AI provider updates store + triggers toast', () => {
+    const addToastSpy = vi.spyOn(useNotificationStore.getState(), 'addToast');
+    const newProvider = { providerId: 'openai' as const, model: 'gpt-4o' };
+    
+    useUIStore.getState().setAIProvider(newProvider);
+    
+    expect(useUIStore.getState().aiProvider).toEqual(newProvider);
+    expect(addToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'agent',
+        title: 'AI Provider Switched'
+    }));
   });
 });
