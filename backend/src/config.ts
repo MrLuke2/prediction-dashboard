@@ -38,6 +38,10 @@ const envSchema = z.object({
   MIN_CONFIDENCE_THRESHOLD: z.string().transform(Number).default('60'),
   ARB_THRESHOLD: z.string().transform(Number).default('0.03'),
   WHALE_THRESHOLD_USD: z.string().transform(Number).default('10000'),
+
+  // AI Router
+  ENABLE_AI_FALLBACK: z.string().transform((v) => v === 'true').default('true'),
+  DAILY_COST_LIMIT_USD: z.string().transform(Number).default('5.00'),
 });
 
 export const config = envSchema.parse(process.env);

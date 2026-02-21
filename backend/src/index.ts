@@ -16,6 +16,7 @@ import type { FastifyBaseLogger } from 'fastify';
 // Route imports
 import authRoutes from './routes/auth/index.js';
 import apiKeyRoutes from './routes/user/api-keys.js';
+import aiUsageRoutes from './routes/ai/index.js';
 
 const fastify = Fastify({
   logger: logger as unknown as FastifyBaseLogger,
@@ -116,6 +117,7 @@ const start = async () => {
     // 7. Register Routes
     await fastify.register(authRoutes, { prefix: '/auth' });
     await fastify.register(apiKeyRoutes, { prefix: '/user/api-keys' });
+    await fastify.register(aiUsageRoutes, { prefix: '/ai' });
 
     // 8. Start Server
     await fastify.listen({ port: config.PORT, host: '0.0.0.0' });

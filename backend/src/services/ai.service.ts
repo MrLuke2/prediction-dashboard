@@ -23,8 +23,8 @@ export class AiService {
     if (config.GEMINI_API_KEY) {
       this.gemini = new GoogleGenerativeAI(config.GEMINI_API_KEY);
     }
-    if (config.CLAUDE_API_KEY) {
-      this.claude = new Anthropic({ apiKey: config.CLAUDE_API_KEY });
+    if (config.ANTHROPIC_API_KEY) {
+      this.claude = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
     }
 
     if (!this.openai && !this.gemini && !this.claude) {
