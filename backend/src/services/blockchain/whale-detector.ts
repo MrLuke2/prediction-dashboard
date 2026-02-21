@@ -8,6 +8,7 @@ import { knownWhalesService } from './known-whales.js';
 import { aiRouter } from '../ai/router.js';
 import { ethers } from 'ethers';
 import { z } from 'zod';
+import * as metrics from '../../lib/metrics.js';
 
 const POLYMARKET_CONTRACTS = [
   '0x4bFb41d5B3570DeFd17c2199640522067306282E', // Proxy
@@ -58,6 +59,7 @@ export class WhaleDetector {
     logger.debug({ blockNumber }, 'Scanning block for whales');
     const block = await polygonClient.getBlock(blockNumber);
     if (!block) return;
+    metrics.blocks_scanned_total.inc();
 
     // In a production environment with high tx volume, we'd use logs/events.
     // For this prompt, we scan txs to known Polymarket contracts as requested.
@@ -89,6 +91,7 @@ export class WhaleDetector {
   }
 
   private async processWhaleTx(tx: ethers.TransactionResponse) {
+    metrics.whale_movements_detected_total.inc();
     const movement = this.parseWhaleMovement(tx);
     const intent = await this.classifyWhaleIntent(movement);
     

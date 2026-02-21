@@ -2,7 +2,7 @@ import { pgEnum } from 'drizzle-orm/pg-core';
 
 export const userPlanEnum = pgEnum('user_plan', ['free', 'pro', 'enterprise']);
 
-export const aiProviderEnum = pgEnum('ai_provider', ['anthropic', 'openai', 'gemini']);
+export const aiProviderEnum = pgEnum('ai_provider', ['anthropic', 'openai', 'gemini', 'system']);
 
 export const tradeSideEnum = pgEnum('trade_side', ['buy', 'sell']);
 export const tradeVenueEnum = pgEnum('trade_venue', ['polymarket', 'kalshi']);

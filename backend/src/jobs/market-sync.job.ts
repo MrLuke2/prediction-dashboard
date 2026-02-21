@@ -8,6 +8,7 @@ import { PolymarketClient } from '../services/market/polymarket.js';
 import { KalshiClient } from '../services/market/kalshi.js';
 import { computeSpread } from '../services/market/spread-calculator.js';
 import type { MarketPair } from '../db/schema/index.js';
+import * as metrics from '../lib/metrics.js';
 
 // ─── Clients (one instance per process) ─────────────────────────────────────
 
@@ -60,10 +61,14 @@ async function syncSingleMarket(market: MarketPair) {
   let polyVolume = 0;
   let kalshiVolume = 0;
 
+  const syncStart = Date.now();
+
   const [polyResult, kalshiResult] = await Promise.allSettled([
     market.polymarketSlug ? polyClient.fetchMarketPrice(market.polymarketSlug) : Promise.resolve(null),
     market.kalshiTicker ? kalshiClient.fetchMarketPrice(market.kalshiTicker) : Promise.resolve(null),
   ]);
+
+  metrics.price_sync_latency_ms.observe(Date.now() - syncStart);
 
   if (polyResult.status === 'fulfilled' && polyResult.value) {
     polyPrice = polyResult.value.yes;
@@ -83,6 +88,10 @@ async function syncSingleMarket(market: MarketPair) {
     ? computeSpread(polyPrice, kalshiPrice, polyVolume, kalshiVolume)
     : null;
 
+  if (spreadData) {
+    metrics.avg_spread_pct.labels(market.symbol).set(spreadData.spreadPct);
+  }
+
   // Cache in Redis (3s TTL — matches frontend StaleDataBadge threshold)
   const cachePayload = JSON.stringify({
     symbol: market.symbol,
@@ -98,13 +107,14 @@ async function syncSingleMarket(market: MarketPair) {
   // Publish real-time update
   await redis.publish(`market:prices:${market.symbol}`, cachePayload);
 
-  // Arb signal detection
-  if (spreadData?.arbSignal) {
-    await redis.publish(`market:arb:${market.symbol}`, JSON.stringify({
-      symbol: market.symbol,
-      ...spreadData,
-      timestamp: Date.now(),
-    }));
+    // Arb signal detection
+    if (spreadData?.arbSignal) {
+      metrics.arb_opportunities_detected_total.labels(market.symbol).inc();
+      await redis.publish(`market:arb:${market.symbol}`, JSON.stringify({
+        symbol: market.symbol,
+        ...spreadData,
+        timestamp: Date.now(),
+      }));
 
     // Maintain sorted set of arb opportunities (score = spreadPct)
     await redis.zadd('markets:arb_ranking', spreadData.spreadPct, market.symbol);

@@ -3,9 +3,15 @@ import { config } from '../config.js';
 
 export const logger = pino({
   level: config.NODE_ENV === 'development' ? 'debug' : 'info',
-  base: {
-    env: config.NODE_ENV,
-  },
+  base: { env: config.NODE_ENV },
+  redact: [
+    'req.headers.authorization',
+    '*.apiKey',
+    '*.password',
+    '*.passwordHash',
+    '*.api_keys',
+    '*.token'
+  ],
   transport: config.NODE_ENV === 'development' 
     ? {
         target: 'pino-pretty',

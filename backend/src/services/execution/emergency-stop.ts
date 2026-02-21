@@ -5,6 +5,7 @@ import { logger } from '../../lib/logger.js';
 import { eq, and, isNull } from 'drizzle-orm';
 import { registry } from '../../ws/clientState.js';
 import { MessageType, buildServerMessage } from '../../ws/protocol.js';
+import * as metrics from '../../lib/metrics.js';
 
 export class EmergencyStopService {
   /**
@@ -13,6 +14,7 @@ export class EmergencyStopService {
    */
   async trigger(reason: string, userId?: string) {
     logger.warn({ userId: userId || 'SYSTEM', reason }, 'EMERGENCY STOP TRIGGERED');
+    metrics.emergency_stops_total.inc();
 
     // 1. Close all open trades
     const conditions = [eq(trades.status, 'open')];

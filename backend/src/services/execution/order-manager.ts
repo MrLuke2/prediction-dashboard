@@ -4,7 +4,8 @@ import { OrderParams, OrderResult } from '../../types/execution.js';
 import { config } from '../../config.js';
 import { logger } from '../../lib/logger.js';
 import { emergencyStopService } from './emergency-stop.js';
-import { desc, eq, and } from 'drizzle-orm';
+import { desc, eq, and, count } from 'drizzle-orm';
+import * as metrics from '../../lib/metrics.js';
 
 export class OrderManager {
   async placeOrder(params: OrderParams): Promise<OrderResult> {
@@ -61,6 +62,10 @@ export class OrderManager {
     if (config.PAPER_TRADING) {
       logger.info({ orderId: newOrder.id }, 'Paper trading enabled, simulating fill');
       await this.simulateFill(newOrder.id);
+      
+      metrics.trades_executed_total.labels(params.venue, params.aiProvider.providerId).inc();
+      await this.updateActivePositionsMetric();
+
       return { orderId: newOrder.id, status: 'filled' };
     }
 
@@ -80,6 +85,15 @@ export class OrderManager {
     await db.update(orders)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(orders.id, orderId));
+  }
+
+  private async updateActivePositionsMetric() {
+    try {
+      const result = await db.select({ value: count() }).from(trades).where(eq(trades.status, 'open'));
+      metrics.active_positions_gauge.set(Number(result[0].value));
+    } catch (err) {
+      logger.error({ err }, 'Failed to update active positions metric');
+    }
   }
 }
 

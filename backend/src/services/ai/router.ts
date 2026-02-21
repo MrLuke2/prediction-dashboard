@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm';
 import { config } from '../../config.js';
 import { logger } from '../../lib/logger.js';
 import { decrypt } from '../../lib/encryption.js';
+import * as metrics from '../../lib/metrics.js';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 
 import type { AIProviderId, AIProviderSelection, AIRequest, AIResponse, IAIProvider } from './types.js';
 import { AIProviderError, AIBudgetExceededError } from './types.js';
@@ -55,6 +57,7 @@ export class AIProviderRouter {
       await enforceBudgetLimit(userId);
     } catch (err) {
       if (err instanceof AIBudgetExceededError) {
+        metrics.ai_budget_exceeded_total.inc();
         // Switch to cheapest model automatically
         logger.warn(
           { userId, originalModel: selection.model },
@@ -114,8 +117,35 @@ export class AIProviderRouter {
       const model = isFallback ? getCheapestModel(currentProviderId) : selection.model;
 
       try {
+        const tracer = trace.getTracer('alpha-mode-predict');
         const startTime = Date.now();
-        const response = await provider.complete(request, model, apiKey);
+        const response = await tracer.startActiveSpan(`ai_complete_${currentProviderId}`, async (span) => {
+          span.setAttributes({
+            'ai.provider': currentProviderId,
+            'ai.model': model,
+            'ai.agent': request.agentName ?? 'unknown',
+            'ai.userId': userId ?? 'system',
+          });
+
+          try {
+            const res = await provider.complete(request, model, apiKey);
+            
+            span.setAttributes({
+              'ai.tokens_input': res.tokensInput,
+              'ai.tokens_output': res.tokensOutput,
+              'ai.cost_usd': res.costUsd,
+              'ai.latency_ms': Date.now() - startTime,
+            });
+            
+            return res;
+          } catch (err: any) {
+            span.recordException(err);
+            span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+            throw err;
+          } finally {
+            span.end();
+          }
+        });
 
         // Log fallback event
         if (isFallback) {
@@ -133,6 +163,13 @@ export class AIProviderRouter {
 
         // 5. Record usage (always, no exceptions)
         await this.recordUsage(response, userId, request.agentName ?? 'unknown', true);
+
+        // Update metrics
+        metrics.ai_requests_total.labels(currentProviderId, model, request.agentName ?? 'unknown').inc();
+        metrics.ai_latency_ms.labels(currentProviderId, model).observe(Date.now() - startTime);
+        metrics.ai_tokens_used_total.labels(currentProviderId, model, 'input').inc(response.tokensInput);
+        metrics.ai_tokens_used_total.labels(currentProviderId, model, 'output').inc(response.tokensOutput);
+        metrics.ai_cost_usd_total.labels(currentProviderId).inc(response.costUsd);
 
         return response;
       } catch (err) {
@@ -272,6 +309,7 @@ export class AIProviderRouter {
     model: string,
     agentName: string,
   ): Promise<void> {
+    metrics.ai_fallback_total.labels(fromProvider, toProvider).inc();
     try {
       await db.insert(agentLogs).values({
         agentName,

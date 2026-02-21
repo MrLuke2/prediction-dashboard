@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      target: runner
+    container_name: alpha-predict-backend
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL_FILE=/run/secrets/db_url
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - REFRESH_SECRET_FILE=/run/secrets/refresh_secret
+      - ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+      - ANTHROPIC_API_KEY_FILE=/run/secrets/anthropic_key
+      - OPENAI_API_KEY_FILE=/run/secrets/openai_key
+      - GEMINI_API_KEY_FILE=/run/secrets/gemini_key
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    secrets:
+      - db_url
+      - jwt_secret
+      - refresh_secret
+      - encryption_key
+      - anthropic_key
+      - openai_key
+      - gemini_key
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: alpha-predict-db
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    secrets:
+      - db_password
+
+  redis:
+    image: redis:7-alpine
+    container_name: alpha-predict-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:
+
+secrets:
+  db_url:
+    external: true
+  jwt_secret:
+    external: true
+  refresh_secret:
+    external: true
+  encryption_key:
+    external: true
+  db_password:
+    external: true
+  anthropic_key:
+    external: true
+  openai_key:
+    external: true
+  gemini_key:
+    external: true
