@@ -3,42 +3,65 @@ import { config } from '../../config.js';
 import { logger } from '../../lib/logger.js';
 
 export class PolygonClient {
-  private provider: ethers.JsonRpcProvider;
+  private provider!: ethers.JsonRpcProvider;
+  private retryCount = 0;
+  private readonly MAX_RETRIES = 3;
 
   constructor() {
-    const rpcUrl = config.POLYGON_RPC_URL || 'https://polygon-rpc.com';
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
-    
-    // In ethers v6, there isn't a direct 'error' event on provider the same way as v5
-    // But we can monitor connection or handle errors in calls.
-    // However, some providers might emit errors.
+    this.connect();
+  }
+
+  private connect() {
+    try {
+      const rpcUrl = config.POLYGON_RPC_URL || 'https://polygon-rpc.com';
+      this.provider = new ethers.JsonRpcProvider(rpcUrl);
+      this.retryCount = 0;
+      logger.info({ rpcUrl }, 'Polygon RPC connected');
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  private handleError(error: any) {
+    logger.error({ error }, 'Polygon RPC provider error');
+    if (this.retryCount < this.MAX_RETRIES) {
+      this.retryCount++;
+      const delay = Math.pow(2, this.retryCount) * 1000;
+      logger.info({ retryCount: this.retryCount, delay }, 'Retrying connection...');
+      setTimeout(() => this.connect(), delay);
+    } else {
+      logger.error('Max retries reached for Polygon RPC connection');
+    }
   }
 
   async getBlock(blockNumber: number | string): Promise<Block | null> {
-    try {
-      return await this.provider.getBlock(blockNumber);
-    } catch (error) {
-      logger.error({ blockNumber, error }, 'Error fetching block');
-      throw error;
-    }
+    return this.callWithRetry(() => this.provider.getBlock(blockNumber));
   }
 
   async getTransaction(txHash: string): Promise<TransactionResponse | null> {
-    try {
-      return await this.provider.getTransaction(txHash);
-    } catch (error) {
-      logger.error({ txHash, error }, 'Error fetching transaction');
-      throw error;
-    }
+    return this.callWithRetry(() => this.provider.getTransaction(txHash));
   }
 
   async getLogs(filter: ethers.Filter): Promise<Log[]> {
+    return this.callWithRetry(() => this.provider.getLogs(filter));
+  }
+
+  async getBlockNumber(): Promise<number> {
+    return this.callWithRetry(() => this.provider.getBlockNumber());
+  }
+
+  private async callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
     try {
-      const logs = await this.provider.getLogs(filter);
-      return logs as Log[];
+      return await fn();
     } catch (error) {
-      logger.error({ filter, error }, 'Error fetching logs');
-      throw error;
+      logger.warn({ error }, 'Polygon RPC call failed, retrying once...');
+      // Simple one-shot retry for transient network issues
+      try {
+        return await fn();
+      } catch (secondError) {
+        logger.error({ error: secondError }, 'Polygon RPC call failed after retry');
+        throw secondError;
+      }
     }
   }
 

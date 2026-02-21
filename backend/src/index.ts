@@ -19,9 +19,12 @@ import apiKeyRoutes from './routes/user/api-keys.js';
 import aiUsageRoutes from './routes/ai/index.js';
 import marketRoutes from './routes/markets/index.js';
 import agentRoutes from './routes/agents/index.js';
+import whaleRoutes from './routes/whales/index.js';
+import tradeRoutes from './routes/trades/index.js';
 import wsRoutes from './ws/index.js';
 import { initMarketSync } from './jobs/market-sync.job.js';
 import { initAgentOrchestrator } from './jobs/agent-orchestrator.job.js';
+import { whaleDetector } from './services/blockchain/whale-detector.js';
 
 const fastify = Fastify({
   logger: logger as unknown as FastifyBaseLogger,
@@ -125,6 +128,8 @@ const start = async () => {
     await fastify.register(aiUsageRoutes, { prefix: '/ai' });
     await fastify.register(marketRoutes, { prefix: '/markets' });
     await fastify.register(agentRoutes, { prefix: '/agents' });
+    await fastify.register(whaleRoutes, { prefix: '/whales' });
+    await fastify.register(tradeRoutes, { prefix: '/trades' });
     await fastify.register(wsRoutes);
 
     // 8. Start Server
@@ -133,6 +138,7 @@ const start = async () => {
     // 9. Start Background Jobs
     await initMarketSync();
     await initAgentOrchestrator();
+    await whaleDetector.start();
 
     console.log(`🚀 Server ready at http://0.0.0.0:${config.PORT}`);
     console.log(`📖 Documentation at http://0.0.0.0:${config.PORT}/docs`);

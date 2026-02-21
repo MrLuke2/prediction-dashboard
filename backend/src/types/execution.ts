@@ -1,3 +1,5 @@
+import { AIProviderSelection } from '../services/ai/types.js';
+
 export type OrderSide = 'buy' | 'sell';
 export type OrderVenue = 'polymarket' | 'kalshi';
 
@@ -9,12 +11,14 @@ export interface OrderParams {
   size: number;
   maxSlippage: number;
   price?: number;
+  aiProvider: AIProviderSelection;
+  aiConfidence: number;
 }
 
 export interface OrderResult {
   orderId: string;
   externalOrderId?: string;
-  status: 'pending' | 'filled' | 'failed';
+  status: 'pending' | 'submitted' | 'filled' | 'failed';
   error?: string;
 }
 
@@ -24,4 +28,6 @@ export interface ArbOpportunity {
   kalshiPrice: number;
   spread: number;
   expectedProfit: number;
+  aiProvider: AIProviderSelection;
+  aiConfidence: number;
 }

@@ -121,15 +121,17 @@ export const AlphaUpdatePayload = z.object({
 });
 
 export const TradeUpdatePayload = z.object({
-  amount: z.number(),
-  roi: z.number(),
+  amount: z.number().optional(),
+  roi: z.number().optional(),
   tradeId: z.string(),
   timestamp: z.number(),
   venue: z.enum(['Polymarket', 'Kalshi', 'Cross-Venue']).optional(),
   asset: z.string().optional(),
   side: z.enum(['Buy', 'Sell']).optional(),
-  status: z.enum(['open', 'closed']).optional(),
+  status: z.enum(['open', 'closed', 'failed', 'emergency_closed']).optional(),
   executionTime: z.string().optional(),
+  pnl: z.number().optional(),
+  aiProvider: AIProviderIdSchema.optional(),
 });
 
 export const PongPayload = z.object({
