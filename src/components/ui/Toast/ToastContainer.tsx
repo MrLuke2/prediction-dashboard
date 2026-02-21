@@ -1,37 +1,35 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useNotificationStore } from '../../../store';
 import { Toast } from './Toast';
-import { cn } from '../../../lib/utils';
-import { useMediaQuery } from '../../../hooks/useMediaQuery';
 
 export const ToastContainer: React.FC = () => {
-    const toasts = useNotificationStore(state => state.toasts);
-    const dismissToast = useNotificationStore(state => state.dismissToast);
-    const isMobile = useMediaQuery('(max-width: 768px)');
+  const { toasts, dismissToast } = useNotificationStore();
 
-    // Render nothing if no toasts
-    if (toasts.length === 0) return null;
+  const container = (
+    <div 
+      className="fixed inset-0 z-[1000] pointer-events-none flex flex-col p-4 sm:p-6 sm:items-end space-y-3 overflow-hidden"
+      style={{ 
+        // macOS style stack effect handled via framer motion layout property
+      }}
+    >
+      <div className="w-full flex flex-col items-center sm:items-end space-y-3 max-w-sm ml-auto">
+        <AnimatePresence mode="popLayout">
+          {toasts.map((toast) => (
+            <Toast 
+              key={toast.id} 
+              toast={toast} 
+              onDismiss={dismissToast} 
+            />
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
 
-    const content = (
-        <div 
-            className={cn(
-                "fixed z-[200] flex flex-col gap-3 p-4 pointer-events-none transition-all duration-500",
-                isMobile ? "top-0 left-0 right-0 items-center" : "top-4 right-4 items-end"
-            )}
-            aria-live="polite"
-        >
-            {toasts.map((toast, index) => (
-                <Toast 
-                    key={toast.id} 
-                    toast={toast} 
-                    onClose={dismissToast} 
-                    index={index} 
-                />
-            ))}
-        </div>
-    );
+  // Use document.body directly for portal if in browser
+  if (typeof document === 'undefined') return null;
 
-    // Render via portal to document.body
-    return createPortal(content, document.body);
+  return createPortal(container, document.body);
 };

@@ -46,14 +46,25 @@ export const useUIStore = create<UIState>()(
             setSearchFocused: (focused) => set({ isSearchFocused: focused }),
             setLogs: (logs) => set({ logs }),
             setMobileTab: (tab) => set({ mobileTab: tab }),
-            setAIProvider: (selection) => set((state) => ({ 
-                aiProvider: selection,
-                agentModels: {
-                    fundamentalist: { providerId: selection.providerId, modelId: selection.model },
-                    sentiment: { providerId: selection.providerId, modelId: selection.model },
-                    risk: { providerId: selection.providerId, modelId: selection.model }
-                }
-            })),
+            setAIProvider: (selection) => {
+                set((state) => ({ 
+                    aiProvider: selection,
+                    agentModels: {
+                        fundamentalist: { providerId: selection.providerId, modelId: selection.model },
+                        sentiment: { providerId: selection.providerId, modelId: selection.model },
+                        risk: { providerId: selection.providerId, modelId: selection.model }
+                    }
+                }));
+                
+                // Prompt 6: AI Provider change toast
+                useNotificationStore.getState().addToast({
+                    type: 'agent',
+                    title: 'AI Provider Switched',
+                    message: `Now using ${selection.providerId.toUpperCase()} ${selection.model}`,
+                    duration: 3000,
+                    providerId: selection.providerId
+                });
+            },
             setAuth: (token, user) => set({ jwt: token, user, isAuthenticated: !!token }),
             clearAuth: () => set({ jwt: null, user: null, isAuthenticated: false }),
             setSettingsOpen: (open) => set({ isSettingsOpen: open }),

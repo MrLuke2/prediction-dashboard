@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useUIStore, useMarketStore, useTradeStore } from '../../store';
+import { useUIStore, useMarketStore, useTradeStore, useNotificationStore } from '../../store';
 import { WebSocketClient } from './WebSocketClient';
 import { MessageType } from './protocol';
+import { formatUSD } from '../../lib/formatters';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
 
@@ -9,6 +10,7 @@ let clientInstance: WebSocketClient | null = null;
 
 export const useWebSocket = () => {
     const { aiProvider, jwt } = useUIStore();
+    const { addToast } = useNotificationStore();
     const [isConnected, setIsConnected] = useState(false);
     const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
     const [lastPing, setLastPing] = useState<number>(0);
@@ -40,11 +42,27 @@ export const useWebSocket = () => {
         // Whale Alerts
         const unsubWhale = client.on(MessageType.WHALE_ALERT, (payload) => {
             useTradeStore.getState().addWhaleMovement(payload);
+            if (payload.confidence > 0.8) {
+                addToast({ 
+                    type: 'warning', 
+                    title: 'Whale Alert', 
+                    message: `${payload.action}: ${formatUSD(payload.amount)} ${payload.asset}` 
+                });
+            }
         });
 
         // Agent Logs
         const unsubLog = client.on(MessageType.AGENT_LOG, (payload) => {
             useTradeStore.getState().addLog(payload);
+            if (payload.level === 'alert' || payload.level === 'DEBATE') {
+                addToast({
+                    type: 'agent',
+                    title: `${payload.agent} Alert`,
+                    message: payload.message.slice(0, 80) + '...',
+                    providerId: payload.providerId,
+                    duration: 6000
+                });
+            }
         });
 
         // Alpha Updates
@@ -55,6 +73,14 @@ export const useWebSocket = () => {
         // Trade Updates
         const unsubTrade = client.on(MessageType.TRADE_UPDATE, (payload) => {
             useTradeStore.getState().updateTrade(payload);
+            if (payload.status === 'closed') {
+                addToast({
+                    type: 'trade',
+                    title: 'Trade Settled',
+                    message: `PnL: ${formatUSD(payload.amount)} | ROI: ${payload.roi}%`,
+                    duration: 8000
+                });
+            }
         });
 
         // PONG for lastPing

@@ -52,29 +52,6 @@ const AppBase: React.FC = () => {
   const handleAuthClose = useCallback(() => setAuthOpen(false), [setAuthOpen]);
   const handleTutorialClose = useCallback(() => setTutorialOpen(false), [setTutorialOpen]);
 
-  // Prompt 6: AI Provider change notification
-  const aiProvider = useUIStore(state => state.aiProvider);
-  const addToast = useNotificationStore(state => state.addToast);
-  const isFirstMount = React.useRef(true);
-
-  useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      return;
-    }
-    const provider = AI_PROVIDERS.find(p => p.id === aiProvider.providerId);
-    if (provider) {
-      const modelName = aiProvider.model;
-      addToast({ 
-        type: 'agent', 
-        title: 'AI Provider Switched', 
-        message: `Now using ${provider.name} — ${modelName}`,
-        duration: 3000,
-        providerId: provider.id
-      });
-    }
-  }, [aiProvider, addToast]);
-
   // Reset banner visibility when back online
   useEffect(() => {
     if (isOnline) setShowOfflineBanner(true);
