@@ -1,10 +1,10 @@
 import { Worker, Queue } from 'bullmq';
-import { redis } from '../lib/redis.js';
+import { redis, redisConnection } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
 import { whaleDetector } from '../services/blockchain/whale-detector.js';
 
 export const whaleSyncQueue = new Queue('whaleSync', { 
-  connection: redis,
+  connection: redisConnection,
   defaultJobOptions: {
     attempts: 5,
     backoff: {
@@ -28,8 +28,9 @@ export const whaleSyncWorker = new Worker('whaleSync', async (job) => {
     await redis.incr('metrics:whale:errors');
     throw err; // Re-throw for BullMQ retry
   }
-}, { connection: redis, concurrency: 5 });
-
+},
+  { connection: redisConnection, concurrency: 5 },
+);
 export const initWhaleSync = async () => {
   logger.info('Initializing Whale Sync Orchestrator...');
   

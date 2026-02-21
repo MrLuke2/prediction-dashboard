@@ -131,7 +131,7 @@ const start = async () => {
       
       // Track HTTP metrics
       http_request_duration_ms.labels(
-        request.routerPath || 'unknown',
+        request.routeOptions?.url || 'unknown',
         reply.statusCode.toString(),
         request.method
       ).observe(duration);
