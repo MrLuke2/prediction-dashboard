@@ -1,251 +1,412 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
-import '@fastify/cookie'; // Load type augmentations
 import argon2 from 'argon2';
 import crypto from 'crypto';
+import { z } from 'zod';
+import zxcvbn from 'zxcvbn';
+import { eq } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema/index.js';
-import { eq } from 'drizzle-orm';
-import { redis } from '../../lib/redis.js'; // Ensure this exists and exports redis client
-import { signToken, verifyToken } from '../../lib/jwt.js';
-import { registerSchema, loginSchema } from '../../schemas/auth.js'; // Ensure schemas exist
+import { redis } from '../../lib/redis.js';
+import { signToken, JWTPayload } from '../../lib/jwt.js';
+import { registerSchema, loginSchema, preferencesSchema, ALLOWED_MODELS } from '../../schemas/auth.js';
 import { authenticate } from '../../middleware/authenticate.js';
-import { z } from 'zod';
+
+// ─── Constants ──────────────────────────────────────────────────────────────
 
 const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+const REFRESH_COOKIE_PATH = '/';
+const BLOCKLIST_PREFIX = 'refresh_blocklist:';
+const RATE_LIMIT_PREFIX = 'rate_limit:login:';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function generateRefreshToken(): string {
+  return crypto.randomBytes(40).toString('hex');
+}
+
+async function hashRefreshToken(token: string): Promise<string> {
+  return argon2.hash(token, {
+    type: argon2.argon2id,
+    memoryCost: 4096,
+    timeCost: 3,
+    parallelism: 1,
+  });
+}
+
+async function verifyRefreshHash(hash: string, token: string): Promise<boolean> {
+  try {
+    return await argon2.verify(hash, token);
+  } catch {
+    return false;
+  }
+}
+
+function setRefreshCookie(reply: FastifyReply, userId: string, token: string): void {
+  reply.setCookie('refresh_token', `${userId}:${token}`, {
+    path: REFRESH_COOKIE_PATH,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: REFRESH_TOKEN_TTL,
+  });
+}
+
+function buildJwtPayload(user: {
+  id: string;
+  email: string;
+  plan: string;
+  preferredAiProvider: string;
+  preferredModel: string;
+}): JWTPayload {
+  return {
+    userId: user.id,
+    email: user.email,
+    plan: user.plan as JWTPayload['plan'],
+    preferredAiProvider: user.preferredAiProvider as JWTPayload['preferredAiProvider'],
+    preferredModel: user.preferredModel,
+  };
+}
+
+function buildApiKeyStatus(apiKeys: Record<string, string | undefined> | null): Record<string, boolean> {
+  const keys = apiKeys || {};
+  return {
+    anthropic: !!keys.anthropic,
+    openai: !!keys.openai,
+    gemini: !!keys.gemini,
+  };
+}
+
+// ─── Routes ─────────────────────────────────────────────────────────────────
 
 export default async function authRoutes(fastify: FastifyInstance) {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
-  // POST /auth/register
+  // ── POST /auth/register ─────────────────────────────────────────────────
   app.post('/register', {
-    schema: {
-      body: registerSchema,
-    }
+    schema: { body: registerSchema },
   }, async (req, reply) => {
     const { email, password } = req.body as z.infer<typeof registerSchema>;
 
-    // Check existing
+    // zxcvbn strength check (score >= 2 required)
+    const strength = zxcvbn(password);
+    if (strength.score < 2) {
+      return reply.code(400).send({
+        error: 'Weak Password',
+        message: 'Password is too weak. Please choose a stronger password.',
+        score: strength.score,
+        feedback: strength.feedback,
+      });
+    }
+
+    // Check if email already exists
     const existing = await db.query.users.findFirst({
-      where: eq(users.email, email)
+      where: eq(users.email, email),
     });
 
     if (existing) {
-      return reply.code(409).send({ error: 'Conflict', message: 'Email already registered' });
+      return reply.code(409).send({
+        error: 'Conflict',
+        message: 'Email already registered',
+      });
     }
 
-    // Hash password
-    const passwordHash = await argon2.hash(password);
+    // Hash password with argon2id
+    const passwordHash = await argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    });
 
-    // Create user
+    // Create user with default provider: anthropic / claude-sonnet-4-5
     const [user] = await db.insert(users).values({
       email,
       passwordHash,
       plan: 'free',
+      preferredAiProvider: 'anthropic',
+      preferredModel: 'claude-sonnet-4-5',
+      apiKeys: {},
     }).returning();
 
     // Generate tokens
-    const accessToken = signToken({ userId: user.id, email: user.email, plan: user.plan });
-    const refreshToken = crypto.randomBytes(40).toString('hex');
-    const refreshHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const jwtPayload = buildJwtPayload(user);
+    const accessToken = signToken(jwtPayload, '15m');
 
-    // Store refresh hash in Redis
+    const refreshToken = generateRefreshToken();
+    const refreshHash = await hashRefreshToken(refreshToken);
+
+    // Store refresh hash in Redis (argon2id hash, not raw token)
     await redis.set(`refresh_token:${user.id}`, refreshHash, 'EX', REFRESH_TOKEN_TTL);
 
-    // Set cookie
-    reply.setCookie('refresh_token', `${user.id}:${refreshToken}`, {
-      path: '/auth/refresh',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: REFRESH_TOKEN_TTL
-    });
+    // Set httpOnly cookie
+    setRefreshCookie(reply, user.id, refreshToken);
 
-    // Stub email verification
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[DEV] Stub Verification Email sent to ${email}`);
-    }
-
-    return { 
-      accessToken, 
-      user: { id: user.id, email: user.email, plan: user.plan } 
+    return {
+      token: accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        plan: user.plan,
+        preferredAiProvider: user.preferredAiProvider,
+        preferredModel: user.preferredModel,
+      },
     };
   });
 
-  // POST /auth/login
+  // ── POST /auth/login ────────────────────────────────────────────────────
   app.post('/login', {
-    schema: {
-      body: loginSchema,
-    }
+    schema: { body: loginSchema },
   }, async (req, reply) => {
     const { email, password } = req.body as z.infer<typeof loginSchema>;
     const ip = req.ip;
 
-    // Rate Limit: 5 attempts per 15min per IP
-    const rateKey = `rate_limit:login:${ip}`;
+    // Rate limit: 5 attempts / 15min / IP (Redis)
+    const rateKey = `${RATE_LIMIT_PREFIX}${ip}`;
     const attempts = await redis.incr(rateKey);
     if (attempts === 1) {
       await redis.expire(rateKey, 15 * 60);
     }
     if (attempts > 5) {
-      return reply.code(429).send({ error: 'Too Many Requests', message: 'Too many login attempts. Try again later.' });
+      return reply.code(429).send({
+        error: 'Too Many Requests',
+        message: 'Too many login attempts. Please try again later.',
+        retryAfter: await redis.ttl(rateKey),
+      });
     }
 
-    // Find User
+    // Find user
     const user = await db.query.users.findFirst({
-      where: eq(users.email, email)
+      where: eq(users.email, email),
     });
 
     if (!user) {
-      // Don't reveal user existence? Or generic error.
-      // Standard practice: "Invalid credentials"
-      return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid credentials' });
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Invalid credentials',
+      });
     }
 
-    // Verify Password
+    // Verify password (argon2id)
     const valid = await argon2.verify(user.passwordHash, password);
     if (!valid) {
-      return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid credentials' });
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Invalid credentials',
+      });
     }
 
-    // Reset rate limit on success? Optional but good UX.
+    // Reset rate limit on success
     await redis.del(rateKey);
 
-    // Log login event (update last_login)
+    // Update last_login
     await db.update(users).set({ lastLogin: new Date() }).where(eq(users.id, user.id));
 
     // Generate tokens
-    const accessToken = signToken({ userId: user.id, email: user.email, plan: user.plan });
-    const refreshToken = crypto.randomBytes(40).toString('hex');
-    const refreshHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const jwtPayload = buildJwtPayload(user);
+    const accessToken = signToken(jwtPayload, '15m');
 
-    // Store refresh hash in Redis (rotates any existing one)
+    const refreshToken = generateRefreshToken();
+    const refreshHash = await hashRefreshToken(refreshToken);
+
+    // Store refresh hash (rotates any existing one)
     await redis.set(`refresh_token:${user.id}`, refreshHash, 'EX', REFRESH_TOKEN_TTL);
 
-    // Set cookie
-    reply.setCookie('refresh_token', `${user.id}:${refreshToken}`, {
-      path: '/auth/refresh',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: REFRESH_TOKEN_TTL
-    });
+    // Set httpOnly cookie
+    setRefreshCookie(reply, user.id, refreshToken);
 
-    return { 
-      accessToken, 
-      user: { id: user.id, email: user.email, plan: user.plan } 
+    return {
+      token: accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        plan: user.plan,
+        preferredAiProvider: user.preferredAiProvider,
+        preferredModel: user.preferredModel,
+      },
     };
   });
 
-  // POST /auth/refresh
+  // ── POST /auth/refresh ──────────────────────────────────────────────────
   fastify.post('/refresh', async (req, reply) => {
-    const refreshToken = req.cookies.refresh_token;
+    const cookieValue = req.cookies?.refresh_token;
 
-    if (!refreshToken) {
-      return reply.code(401).send({ error: 'Unauthorized', message: 'Missing refresh token' });
+    if (!cookieValue) {
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Missing refresh token',
+      });
     }
 
-    // We decoded access token to get user ID? 
-    // Usually refresh endpoint doesn't require auth header (expired).
-    // So we need to look up userId associated with this refresh token?
-    // Problem: Redis key is `refresh_token:${userId}`. We can't lookup key by value easily.
-    // Solution: The refresh token stored in cookie should probably include userId or we store map `token -> userId`.
-    // BUT constraint: "Refresh tokens stored as hashed values". 
-    // This implies we can't reverse lookup.
-    // So the cookie MUST contain userId? Or the refresh token payload must encode it.
-    // Let's make refresh token a signed JWT (long lived) OR include userId in the opaque string?
-    // "Refresh tokens stored as hashed values in Redis" usually implies opaque token.
-    // To identify user, we can append userId to token? `userId.randomToken`?
-    // Let's do `userId.randomToken`.
-    
-    // Correction: In login/register, I used `crypto.randomBytes(40)`. I should prepend ID.
-    // But wait, the standard usually sends access token (expired) + refresh token. Access token has ID.
-    // Fastify `req.user` might be available if we use `authenticate` but allow expired?
-    // Handling expired explicitly in `authenticate` is tricky.
-    // Better: Send userId in body? Or assume cookie is `refreshToken`.
-    // I will change the logic to store `refresh_token:${refreshToken}` in Redis? No, that exposes token.
-    // Valid pattern: Cookie = `userId:token`.
-    // Let's modify login/register logic to cookie: `${user.id}:${refreshToken}`.
-    // Then in refresh, split, get ID, hash token, compare.
-    
-    // Wait, let's fix login/register first if needed. 
-    // I'll parse `req.cookies.refresh_token`.
-    
-    // Logic inside refresh endpoint:
-    const parts = refreshToken.split(':');
-    if (parts.length !== 2) {
-       return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid token format' });
+    // Cookie format: userId:opaqueToken
+    const colonIndex = cookieValue.indexOf(':');
+    if (colonIndex === -1) {
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Invalid token format',
+      });
     }
-    const [userId, tokenVal] = parts;
-    
-    // Verify hash
+
+    const userId = cookieValue.substring(0, colonIndex);
+    const tokenVal = cookieValue.substring(colonIndex + 1);
+
+    // Check blocklist (token reuse detection)
+    const isBlocked = await redis.get(`${BLOCKLIST_PREFIX}${userId}:${tokenVal.substring(0, 16)}`);
+    if (isBlocked) {
+      // Potential token reuse attack — invalidate all sessions
+      await redis.del(`refresh_token:${userId}`);
+      reply.clearCookie('refresh_token', { path: REFRESH_COOKIE_PATH });
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Token has been revoked. Please log in again.',
+      });
+    }
+
+    // Verify against stored hash
     const storedHash = await redis.get(`refresh_token:${userId}`);
     if (!storedHash) {
-       return reply.code(401).send({ error: 'Unauthorized', message: 'Token expired or invalid' });
-    }
-    
-    const inputHash = crypto.createHash('sha256').update(tokenVal).digest('hex');
-    if (inputHash !== storedHash) {
-       // Potential reuse attack!
-       await redis.del(`refresh_token:${userId}`);
-       return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid token' });
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Token expired or invalid',
+      });
     }
 
-    // Rotate
-    // Find user to get current plan/email for new access token
+    const isValid = await verifyRefreshHash(storedHash, tokenVal);
+    if (!isValid) {
+      // Potential reuse — invalidate all
+      await redis.del(`refresh_token:${userId}`);
+      reply.clearCookie('refresh_token', { path: REFRESH_COOKIE_PATH });
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Invalid token',
+      });
+    }
+
+    // Fetch user for fresh JWT payload
     const user = await db.query.users.findFirst({
-        where: eq(users.id, userId as string) // userId from split is string
-    }); // Need uuid cast? Drizzle handles string for uuid usually.
-
-    if (!user) return reply.code(401).send({ error: 'Unauthorized', message: 'User not found' });
-
-    const newAccessToken = signToken({ userId: user.id, email: user.email, plan: user.plan });
-    const newRefreshToken = crypto.randomBytes(40).toString('hex');
-    const newRefreshHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
-
-    await redis.set(`refresh_token:${user.id}`, newRefreshHash, 'EX', REFRESH_TOKEN_TTL);
-
-    reply.setCookie('refresh_token', `${user.id}:${newRefreshToken}`, {
-      path: '/auth/refresh',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: REFRESH_TOKEN_TTL
+      where: eq(users.id, userId),
     });
 
-    return { accessToken: newAccessToken };
-  });
-
-  // POST /auth/logout
-  fastify.post('/logout', async (req, reply) => {
-    const refreshToken = req.cookies.refresh_token;
-    if (refreshToken) {
-        const parts = refreshToken.split(':');
-        if (parts.length === 2) {
-            const [userId] = parts;
-            await redis.del(`refresh_token:${userId}`);
-        }
+    if (!user) {
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'User not found',
+      });
     }
-    reply.clearCookie('refresh_token', { path: '/auth/refresh' });
-    return { message: 'Logged out' };
+
+    // Rotate: generate new tokens, blocklist old
+    const newRefreshToken = generateRefreshToken();
+    const newRefreshHash = await hashRefreshToken(newRefreshToken);
+
+    // Blocklist the old token fingerprint (first 16 chars) to detect reuse
+    await redis.set(
+      `${BLOCKLIST_PREFIX}${userId}:${tokenVal.substring(0, 16)}`,
+      '1',
+      'EX',
+      REFRESH_TOKEN_TTL
+    );
+
+    // Store new refresh hash
+    await redis.set(`refresh_token:${user.id}`, newRefreshHash, 'EX', REFRESH_TOKEN_TTL);
+
+    // Issue new access token
+    const jwtPayload = buildJwtPayload(user);
+    const newAccessToken = signToken(jwtPayload, '15m');
+
+    // Set new cookie
+    setRefreshCookie(reply, user.id, newRefreshToken);
+
+    return { token: newAccessToken };
   });
 
-  // GET /auth/me
+  // ── POST /auth/logout ───────────────────────────────────────────────────
+  fastify.post('/logout', async (req, reply) => {
+    const cookieValue = req.cookies?.refresh_token;
+
+    if (cookieValue) {
+      const colonIndex = cookieValue.indexOf(':');
+      if (colonIndex !== -1) {
+        const userId = cookieValue.substring(0, colonIndex);
+        const tokenVal = cookieValue.substring(colonIndex + 1);
+
+        // Blocklist refresh token in Redis (TTL 7d)
+        await redis.set(
+          `${BLOCKLIST_PREFIX}${userId}:${tokenVal.substring(0, 16)}`,
+          '1',
+          'EX',
+          REFRESH_TOKEN_TTL
+        );
+
+        // Remove stored refresh hash
+        await redis.del(`refresh_token:${userId}`);
+      }
+    }
+
+    // Clear cookie
+    reply.clearCookie('refresh_token', { path: REFRESH_COOKIE_PATH });
+
+    return reply.code(200).send({ message: 'Logged out' });
+  });
+
+  // ── GET /auth/me ────────────────────────────────────────────────────────
   fastify.get('/me', {
-    preHandler: [authenticate]
+    preHandler: [authenticate],
   }, async (req, reply) => {
-     // req.user populated by authenticate
-     const user = await db.query.users.findFirst({
-         where: eq(users.id, req.user.userId)
-     });
-     
-     if (!user) return reply.code(404).send({ error: 'User not found' });
-     
-     return {
-         id: user.id,
-         email: user.email,
-         plan: user.plan,
-         createdAt: user.createdAt
-     };
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, req.user.userId),
+    });
+
+    if (!user) {
+      return reply.code(404).send({ error: 'User not found' });
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      plan: user.plan,
+      preferredAiProvider: user.preferredAiProvider,
+      preferredModel: user.preferredModel,
+      createdAt: user.createdAt,
+      lastLogin: user.lastLogin,
+      isActive: user.isActive,
+      hasApiKey: buildApiKeyStatus(user.apiKeys as Record<string, string | undefined>),
+    };
+  });
+
+  // ── PATCH /auth/preferences ─────────────────────────────────────────────
+  app.patch('/preferences', {
+    preHandler: [authenticate],
+    schema: { body: preferencesSchema },
+  }, async (req, reply) => {
+    const { preferredAiProvider, preferredModel } = req.body as z.infer<typeof preferencesSchema>;
+
+    // Double-check model is valid for provider
+    const allowed = ALLOWED_MODELS[preferredAiProvider];
+    if (!allowed.includes(preferredModel)) {
+      return reply.code(400).send({
+        error: 'Invalid Model',
+        message: `Model "${preferredModel}" is not available for provider "${preferredAiProvider}".`,
+        allowedModels: allowed,
+      });
+    }
+
+    // Update user preferences
+    await db.update(users).set({
+      preferredAiProvider,
+      preferredModel,
+    }).where(eq(users.id, req.user.userId));
+
+    // Broadcast to user's active WS connections
+    // We publish a Redis message that the WS handler picks up
+    await redis.publish(`user:${req.user.userId}:events`, JSON.stringify({
+      type: 'SET_AI_PROVIDER',
+      payload: { preferredAiProvider, preferredModel },
+    }));
+
+    return {
+      preferredAiProvider,
+      preferredModel,
+      message: 'Preferences updated',
+    };
   });
 }

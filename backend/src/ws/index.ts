@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { WebSocket } from 'ws';
-import { verifyToken, JwtPayload } from '../lib/jwt.js';
+import crypto from 'crypto';
+import { verifyToken, JWTPayload } from '../lib/jwt.js';
 import { connections, ClientState } from './client-state.js';
 import { WS_CLIENT_MESSAGES, SubscribeMarketPayload, UnsubscribeMarketPayload } from './protocol.js';
 import { logger } from '../lib/logger.js';
@@ -32,7 +33,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
     // Let's assume `?token=ACCESS_TOKEN`.
     
     const query = req.query as { token?: string };
-    let user: JwtPayload | null = null;
+    let user: JWTPayload | null = null;
     
     if (query.token) {
         user = verifyToken(query.token);

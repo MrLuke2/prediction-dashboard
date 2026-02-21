@@ -1,5 +1,5 @@
 import { pgTable, index, bigserial, uuid, numeric, timestamp } from 'drizzle-orm/pg-core';
-import { marketPairs } from './market_pairs';
+import { marketPairs } from './market_pairs.js';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const priceSnapshots = pgTable('price_snapshots', {

@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import { userPlanEnum, aiProviderEnum } from './enums';
+import { userPlanEnum, aiProviderEnum } from './enums.js';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),

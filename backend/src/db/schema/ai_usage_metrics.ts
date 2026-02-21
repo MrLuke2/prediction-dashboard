@@ -1,6 +1,6 @@
 import { pgTable, bigserial, varchar, timestamp, integer, numeric, boolean, uuid, index } from 'drizzle-orm/pg-core';
-import { users } from './users';
-import { aiProviderEnum } from './enums';
+import { users } from './users.js';
+import { aiProviderEnum } from './enums.js';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const aiUsageMetrics = pgTable('ai_usage_metrics', {

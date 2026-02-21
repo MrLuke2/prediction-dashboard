@@ -1,5 +1,5 @@
 import { pgTable, bigserial, timestamp, numeric, jsonb } from 'drizzle-orm/pg-core';
-import { alphaRegimeEnum, aiProviderEnum } from './enums';
+import { alphaRegimeEnum, aiProviderEnum } from './enums.js';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const alphaMetrics = pgTable('alpha_metrics', {

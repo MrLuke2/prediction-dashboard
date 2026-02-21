@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, timestamp, integer, numeric, jsonb } from 'drizzle-orm/pg-core';
-import { users } from './users';
+import { users } from './users.js';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const emergencyEvents = pgTable('emergency_events', {

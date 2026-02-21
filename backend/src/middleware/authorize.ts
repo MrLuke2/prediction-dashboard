@@ -1,22 +1,32 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { JwtPayload } from '../lib/jwt.js';
+import { JWTPayload } from '../lib/jwt.js';
 
-const planHierarchy = {
+const planHierarchy: Record<string, number> = {
   free: 0,
   pro: 1,
   enterprise: 2,
-} as const;
+};
 
+/**
+ * Authorization middleware factory.
+ * Returns a Fastify preHandler that enforces minimum plan requirements.
+ * Must be used AFTER authenticate middleware.
+ *
+ * @param minPlan - Minimum plan required ('pro' | 'enterprise')
+ * @returns Fastify preHandler hook
+ */
 export const requirePlan = (minPlan: 'pro' | 'enterprise') => {
-  return async (req: FastifyRequest, reply: FastifyReply) => {
-    // Authenticate middleware must run before this
-    const user = req.user as JwtPayload | undefined;
-    
+  return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    const user = req.user as JWTPayload | undefined;
+
     if (!user) {
-      return reply.status(401).send({ error: 'Unauthorized', message: 'Not authenticated' });
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'Not authenticated',
+      });
     }
 
-    const userPlanLevel = planHierarchy[user.plan as keyof typeof planHierarchy] ?? 0;
+    const userPlanLevel = planHierarchy[user.plan] ?? 0;
     const requiredLevel = planHierarchy[minPlan];
 
     if (userPlanLevel < requiredLevel) {
@@ -29,8 +39,8 @@ export const requirePlan = (minPlan: 'pro' | 'enterprise') => {
           title: `Upgrade to ${minPlan}`,
           description: `Unlock this feature and more with our ${minPlan} plan.`,
           cta: 'Upgrade Now',
-          link: `/billing/upgrade?plan=${minPlan}`
-        }
+          link: `/billing/upgrade?plan=${minPlan}`,
+        },
       });
     }
   };

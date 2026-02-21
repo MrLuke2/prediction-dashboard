@@ -1,6 +1,6 @@
 import { pgTable, bigserial, varchar, timestamp, jsonb, integer, uuid, index } from 'drizzle-orm/pg-core';
-import { marketPairs } from './market_pairs';
-import { agentLogLevelEnum, aiProviderEnum } from './enums';
+import { marketPairs } from './market_pairs.js';
+import { agentLogLevelEnum, aiProviderEnum } from './enums.js';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const agentLogs = pgTable('agent_logs', {

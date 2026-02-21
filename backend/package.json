@@ -13,6 +13,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^8.3.0",
     "@fastify/helmet": "^11.0.0",
     "@fastify/jwt": "^7.2.0",
@@ -20,6 +21,7 @@
     "@fastify/swagger": "^8.8.0",
     "@fastify/swagger-ui": "^1.9.0",
     "@fastify/websocket": "^8.2.0",
+    "argon2": "^0.44.0",
     "bullmq": "^4.11.0",
     "dotenv": "^16.3.1",
     "drizzle-orm": "^0.30.0",
@@ -27,13 +29,17 @@
     "fastify-plugin": "^4.5.1",
     "fastify-type-provider-zod": "^1.1.9",
     "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.3",
     "pino": "^8.15.0",
     "pino-pretty": "^10.2.0",
     "postgres": "^3.3.5",
-    "zod": "^3.22.2"
+    "zod": "^3.22.2",
+    "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.5.9",
+    "@types/zxcvbn": "^4.4.5",
     "drizzle-kit": "^0.21.1",
     "tsx": "^4.7.1",
     "typescript": "^5.4.2"

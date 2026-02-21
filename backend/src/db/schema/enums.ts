@@ -13,3 +13,5 @@ export const agentLogLevelEnum = pgEnum('agent_log_level', ['info', 'warn', 'ale
 export const whaleDirectionEnum = pgEnum('whale_direction', ['in', 'out']);
 
 export const alphaRegimeEnum = pgEnum('alpha_regime', ['low', 'medium', 'high', 'critical']);
+
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'submitted', 'filled', 'partially_filled', 'cancelled', 'failed']);

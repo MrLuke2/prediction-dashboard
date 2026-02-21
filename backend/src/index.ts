@@ -4,15 +4,21 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
 import jwt from '@fastify/jwt';
+import cookie from '@fastify/cookie';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { config } from './config.js';
 import { logger } from './lib/logger.js';
 import crypto from 'crypto';
+import type { FastifyBaseLogger } from 'fastify';
+
+// Route imports
+import authRoutes from './routes/auth/index.js';
+import apiKeyRoutes from './routes/user/api-keys.js';
 
 const fastify = Fastify({
-  logger,
+  logger: logger as unknown as FastifyBaseLogger,
   disableRequestLogging: true, // We'll handle it via correlation
   genReqId: (req) => (req.headers['x-request-id'] as string) || crypto.randomUUID(),
 });
@@ -32,6 +38,15 @@ const start = async () => {
           version: '1.0.0',
         },
         servers: [{ url: `http://localhost:${config.PORT}` }],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT',
+            },
+          },
+        },
       },
     });
 
@@ -41,7 +56,10 @@ const start = async () => {
 
     // 2. Security Plugins
     await fastify.register(cors, {
-      origin: '*', // Whitelist frontend origin in production
+      origin: process.env.NODE_ENV === 'production'
+        ? ['https://alphamodepredict.com']
+        : true,
+      credentials: true, // Allow cookies
     });
 
     await fastify.register(helmet);
@@ -51,47 +69,57 @@ const start = async () => {
       timeWindow: '1 minute',
     });
 
-    // 3. Functional Plugins
+    // 3. Cookie Plugin (for httpOnly refresh tokens)
+    await fastify.register(cookie, {
+      secret: config.REFRESH_SECRET, // Signs cookies
+      parseOptions: {},
+    });
+
+    // 4. Functional Plugins
     await fastify.register(jwt, {
       secret: config.JWT_SECRET,
     });
 
     await fastify.register(websocket);
 
-    // 4. Request Logging with Correlation
+    // 5. Request Logging with Correlation
     fastify.addHook('onRequest', async (request) => {
-      request.log.info({ 
+      request.log.info({
         msg: 'incoming request',
         method: request.method,
         url: request.url,
-        requestId: request.id 
+        requestId: request.id,
       });
     });
 
     fastify.addHook('onResponse', async (request, reply) => {
-      request.log.info({ 
+      request.log.info({
         msg: 'request completed',
         method: request.method,
         url: request.url,
         statusCode: reply.statusCode,
         responseTime: reply.elapsedTime,
-        requestId: request.id
+        requestId: request.id,
       });
     });
 
-    // 5. Health Check
+    // 6. Health Check
     fastify.get('/health', async () => {
-      return { 
-        status: 'ok', 
+      return {
+        status: 'ok',
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.0.0',
       };
     });
 
-    // 6. Start Server
+    // 7. Register Routes
+    await fastify.register(authRoutes, { prefix: '/auth' });
+    await fastify.register(apiKeyRoutes, { prefix: '/user/api-keys' });
+
+    // 8. Start Server
     await fastify.listen({ port: config.PORT, host: '0.0.0.0' });
-    
+
     console.log(`🚀 Server ready at http://0.0.0.0:${config.PORT}`);
     console.log(`📖 Documentation at http://0.0.0.0:${config.PORT}/docs`);
   } catch (err) {

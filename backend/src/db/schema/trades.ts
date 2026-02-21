@@ -1,7 +1,7 @@
 import { pgTable, uuid, varchar, timestamp, numeric, index } from 'drizzle-orm/pg-core';
-import { users } from './users';
-import { marketPairs } from './market_pairs';
-import { tradeSideEnum, tradeVenueEnum, tradeStatusEnum, aiProviderEnum } from './enums';
+import { users } from './users.js';
+import { marketPairs } from './market_pairs.js';
+import { tradeSideEnum, tradeVenueEnum, tradeStatusEnum, aiProviderEnum } from './enums.js';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const trades = pgTable('trades', {
