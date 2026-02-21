@@ -1,44 +1,62 @@
 import { Redis } from 'ioredis';
+import { WebSocket } from 'ws';
 import { config } from '../../config.js';
-import { connections } from '../client-state.js';
+import { registry } from '../clientState.js';
+import { MessageType, buildServerMessage, AgentLogPayload } from '../protocol.js';
 import { logger } from '../../lib/logger.js';
-import { WS_SERVER_MESSAGES } from '../protocol.js';
 
 const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 
-export async function initAgentFeedChannel() {
+const PRO_LEVELS = new Set(['WARN', 'ERROR', 'DEBATE']);
+
+export async function initAgentFeedChannel(): Promise<void> {
   await subClient.subscribe('agents:logs');
-  
+
   subClient.on('message', (channel, message) => {
     if (channel !== 'agents:logs') return;
-     
+
     try {
-      const payload = JSON.parse(message);
-      // Expected Log Structure: { level: 'info' | 'warn' | 'alert', message: string, ... }
-      
-      const isProLevel = payload.level === 'warn' || payload.level === 'alert';
-      
-      const payloadStr = JSON.stringify({
-        type: WS_SERVER_MESSAGES.AGENT_LOG,
-        payload,
-        ts: Date.now()
-      });
+      const raw = JSON.parse(message);
 
-      for (const [id, client] of connections) {
-        if (!client.userId) continue;
+      const payload = {
+        id: raw.id ?? crypto.randomUUID(),
+        timestamp: raw.timestamp ?? new Date().toISOString(),
+        agent: raw.agent ?? 'Unknown',
+        message: raw.message ?? '',
+        level: raw.level ?? 'INFO',
+        providerId: raw.providerId,
+        agentProvider: raw.agentProvider ?? raw.providerId ?? 'gemini',
+        model: raw.model,
+        latency_ms: raw.latency_ms ?? raw.latencyMs,
+      };
 
-        // Filter: Free users only get INFO
-        // Pro users get everything
-        if (client.plan === 'free' && isProLevel) {
+      const validationResult = AgentLogPayload.safeParse(payload);
+      if (!validationResult.success) {
+        logger.warn({ errors: validationResult.error.issues }, 'Invalid agent log payload');
+        return;
+      }
+
+      const isProLevel = PRO_LEVELS.has(validationResult.data.level);
+      const msg = buildServerMessage(MessageType.AGENT_LOG, validationResult.data);
+
+      for (const state of registry.getAll()) {
+        if (state.ws.readyState !== WebSocket.OPEN) continue;
+
+        // Guest: no access
+        if (state.plan === 'guest') {
+          // Don't send upgrade error on every log — too noisy
           continue;
         }
 
-        if (client.ws.readyState === client.ws.OPEN) {
-          client.ws.send(payloadStr);
-        }
+        // Free: info + SUCCESS only
+        if (state.plan === 'free' && isProLevel) continue;
+
+        state.ws.send(msg);
       }
     } catch (e) {
-      logger.error('Failed to process agent log');
+      logger.error({ e }, 'Failed to process agent log');
     }
   });
+
+  logger.info('Agent feed channel initialized');
 }

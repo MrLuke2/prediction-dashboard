@@ -1,35 +1,55 @@
 import { Redis } from 'ioredis';
+import { WebSocket } from 'ws';
 import { config } from '../../config.js';
-import { connections } from '../client-state.js';
+import { registry } from '../clientState.js';
+import { MessageType, buildServerMessage, WhaleAlertPayload } from '../protocol.js';
 import { logger } from '../../lib/logger.js';
-import { WS_SERVER_MESSAGES } from '../protocol.js';
 
 const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 
-export async function initWhaleRadarChannel() {
+export async function initWhaleRadarChannel(): Promise<void> {
   await subClient.subscribe('whale:movements');
-  
+
   subClient.on('message', (channel, message) => {
     if (channel !== 'whale:movements') return;
-     
-    try {
-      const payload = JSON.parse(message);
-      const msg = JSON.stringify({
-        type: WS_SERVER_MESSAGES.WHALE_ALERT,
-        payload,
-        ts: Date.now()
-      });
 
-      // Broadcast to ALL authenticated clients
-      for (const [id, client] of connections) {
-        if (client.userId) { // Check authenticated
-           if (client.ws.readyState === client.ws.OPEN) {
-             client.ws.send(msg);
-           }
+    try {
+      const raw = JSON.parse(message);
+
+      const payload = {
+        id: raw.id ?? crypto.randomUUID(),
+        wallet: raw.wallet ?? raw.from ?? 'unknown',
+        action: raw.action ?? raw.type ?? 'transfer',
+        amount: raw.amount ?? raw.valueUsd ?? 0,
+        asset: raw.asset ?? raw.symbol ?? 'unknown',
+        confidence: raw.confidence ?? 0.5,
+        timestamp: raw.timestamp ?? Date.now(),
+        providerId: raw.providerId ?? raw.flaggedBy ?? undefined,
+      };
+
+      const validationResult = WhaleAlertPayload.safeParse(payload);
+      if (!validationResult.success) {
+        logger.warn({ errors: validationResult.error.issues }, 'Invalid whale alert payload');
+        return;
+      }
+
+      for (const state of registry.getAll()) {
+        if (state.ws.readyState !== WebSocket.OPEN) continue;
+
+        const outPayload = { ...validationResult.data };
+
+        // Guest: receive movements but strip whale labels (providerId)
+        if (state.plan === 'guest') {
+          delete (outPayload as any).providerId;
         }
+
+        // All connections (including guests) receive whale movements
+        state.ws.send(buildServerMessage(MessageType.WHALE_ALERT, outPayload));
       }
     } catch (e) {
-      logger.error('Failed to process whale movement');
+      logger.error({ e }, 'Failed to process whale movement');
     }
   });
+
+  logger.info('Whale radar channel initialized');
 }

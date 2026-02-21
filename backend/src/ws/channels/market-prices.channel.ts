@@ -1,65 +1,70 @@
 import { Redis } from 'ioredis';
+import { WebSocket } from 'ws';
 import { config } from '../../config.js';
-import { connections } from '../client-state.js';
+import { registry, ClientState } from '../clientState.js';
+import { MessageType, buildServerMessage, MarketUpdatePayload } from '../protocol.js';
 import { logger } from '../../lib/logger.js';
-import { WS_SERVER_MESSAGES } from '../protocol.js';
 
-// Dedicated Redis subscriber
 const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 
-export async function initMarketPricesChannel() {
+const GUEST_THROTTLE_MS = 2000;
+const PRO_THROTTLE_MS = 500;
+
+function getThrottleMs(plan: ClientState['plan']): number {
+  return plan === 'guest' || plan === 'free' ? GUEST_THROTTLE_MS : PRO_THROTTLE_MS;
+}
+
+function shouldSend(state: ClientState, symbol: string): boolean {
+  const last = state.throttles.get(symbol) || 0;
+  const now = Date.now();
+  const interval = getThrottleMs(state.plan);
+  if (now - last >= interval) {
+    state.throttles.set(symbol, now);
+    return true;
+  }
+  return false;
+}
+
+export async function initMarketPricesChannel(): Promise<void> {
   await subClient.psubscribe('market:prices:*');
-  
-  subClient.on('pmessage', (pattern, channel, message) => {
-    if (pattern !== 'market:prices:*') return;
-    
-    // channel format: market:prices:SYMBOL
+
+  subClient.on('pmessage', (_pattern, channel, message) => {
     const symbol = channel.split(':')[2];
     if (!symbol) return;
 
     try {
-      const payload = JSON.parse(message);
-      const msg = JSON.stringify({
-        type: WS_SERVER_MESSAGES.MARKET_UPDATE,
-        payload: {
-          symbol,
-          ...payload
-        },
-        ts: Date.now()
-      });
+      const raw = JSON.parse(message);
 
-      // Fan-out
-      for (const [id, client] of connections) {
-        if (client.subscribedSymbols.has(symbol)) {
-           // Basic throttling: 1msg/500ms per client+symbol?
-           // Complex per-client-symbol throttle state needed.
-           // Simplified: Just broadcast for now or implement global throttle?
-           // Requirement: "Throttle per-client to 1 message/500ms (prevent flood)"
-           // To implement per-client-per-symbol throttle, we need state map in client.
-           // Let's assume we can attach throttle map to client state.
-           if (shouldSend(client, symbol)) {
-             if (client.ws.readyState === client.ws.OPEN) {
-                client.ws.send(msg);
-             }
-           }
-        }
+      // Build payload matching frontend MarketPair shape
+      const payload = {
+        symbol,
+        polymarketPrice: raw.polyPrice ?? 0,
+        kalshiPrice: raw.kalshiPrice ?? 0,
+        spread: raw.spread?.spread ?? Math.abs((raw.polyPrice ?? 0) - (raw.kalshiPrice ?? 0)),
+        trend: raw.spread?.direction === 'poly_higher' ? 'up'
+             : raw.spread?.direction === 'kalshi_higher' ? 'down'
+             : 'neutral',
+        volume: String(raw.volume24h ?? '0'),
+      };
+
+      const validationResult = MarketUpdatePayload.safeParse(payload);
+      if (!validationResult.success) {
+        logger.warn({ symbol, errors: validationResult.error.issues }, 'Invalid market update payload');
+        return;
+      }
+
+      const msg = buildServerMessage(MessageType.MARKET_UPDATE, validationResult.data);
+
+      for (const state of registry.getAll()) {
+        if (!state.subscribedSymbols.has(symbol)) continue;
+        if (state.ws.readyState !== WebSocket.OPEN) continue;
+        if (!shouldSend(state, symbol)) continue;
+        state.ws.send(msg);
       }
     } catch (e) {
       logger.error({ e, channel }, 'Failed to process market price update');
     }
   });
-}
 
-// Ideally add `throttles: Map<string, number>` to ClientState
-function shouldSend(client: any, symbol: string): boolean {
-  // Hacky dynamic attach if not in interface
-  if (!client.throttles) client.throttles = new Map<string, number>();
-  
-  const last = client.throttles.get(symbol) || 0;
-  const now = Date.now();
-  if (now - last > 500) {
-    client.throttles.set(symbol, now);
-    return true;
-  }
-  return false;
+  logger.info('Market prices channel initialized');
 }

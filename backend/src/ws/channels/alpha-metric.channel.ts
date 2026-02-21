@@ -1,32 +1,44 @@
 import { Redis } from 'ioredis';
+import { WebSocket } from 'ws';
 import { config } from '../../config.js';
-import { connections } from '../client-state.js';
+import { registry } from '../clientState.js';
+import { MessageType, buildServerMessage, AlphaUpdatePayload } from '../protocol.js';
 import { logger } from '../../lib/logger.js';
-import { WS_SERVER_MESSAGES } from '../protocol.js';
 
 const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 
-export async function initAlphaMetricChannel() {
+export async function initAlphaMetricChannel(): Promise<void> {
   await subClient.subscribe('agents:alpha');
-  
+
   subClient.on('message', (channel, message) => {
     if (channel !== 'agents:alpha') return;
-     
-    try {
-      const payload = JSON.parse(message);
-      const msg = JSON.stringify({
-        type: WS_SERVER_MESSAGES.ALPHA_UPDATE,
-        payload,
-        ts: Date.now()
-      });
 
-      for (const [id, client] of connections) {
-        if (client.userId && client.ws.readyState === client.ws.OPEN) {
-          client.ws.send(msg);
-        }
+    try {
+      const raw = JSON.parse(message);
+
+      const payload = {
+        probability: raw.probability ?? 50,
+        trend: raw.trend ?? 'stable',
+        history: raw.history ?? [],
+        breakdown: raw.breakdown,
+        generatedBy: raw.generatedBy ?? raw.providerId ?? 'gemini',
+        contributing_agents: raw.contributing_agents ?? raw.contributingAgents,
+      };
+
+      const validationResult = AlphaUpdatePayload.safeParse(payload);
+      if (!validationResult.success) {
+        logger.warn({ errors: validationResult.error.issues }, 'Invalid alpha update payload');
+        return;
       }
+
+      const msg = buildServerMessage(MessageType.ALPHA_UPDATE, validationResult.data);
+
+      // Broadcast to all authenticated clients (not guests)
+      registry.broadcast(msg, (state) => state.userId !== null);
     } catch (e) {
-      logger.error('Failed to process alpha metric');
+      logger.error({ e }, 'Failed to process alpha metric');
     }
   });
+
+  logger.info('Alpha metric channel initialized');
 }

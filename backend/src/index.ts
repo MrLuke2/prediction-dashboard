@@ -18,6 +18,7 @@ import authRoutes from './routes/auth/index.js';
 import apiKeyRoutes from './routes/user/api-keys.js';
 import aiUsageRoutes from './routes/ai/index.js';
 import marketRoutes from './routes/markets/index.js';
+import wsRoutes from './ws/index.js';
 import { initMarketSync } from './jobs/market-sync.job.js';
 
 const fastify = Fastify({
@@ -121,6 +122,7 @@ const start = async () => {
     await fastify.register(apiKeyRoutes, { prefix: '/user/api-keys' });
     await fastify.register(aiUsageRoutes, { prefix: '/ai' });
     await fastify.register(marketRoutes, { prefix: '/markets' });
+    await fastify.register(wsRoutes);
 
     // 8. Start Server
     await fastify.listen({ port: config.PORT, host: '0.0.0.0' });
