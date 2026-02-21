@@ -95,7 +95,7 @@ export const AgentLogPayload = z.object({
   timestamp: z.string(),
   agent: z.string(),
   message: z.string(),
-  level: z.enum(['INFO', 'WARN', 'ERROR', 'SUCCESS', 'DEBATE']),
+  level: z.enum(['INFO', 'WARN', 'ERROR', 'SUCCESS', 'DEBATE', 'ALERT']),
   providerId: z.string().optional(),
   agentProvider: AIProviderIdSchema,
   model: z.string().optional(),

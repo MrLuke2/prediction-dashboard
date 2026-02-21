@@ -52,7 +52,7 @@ export class WhaleDetector {
       } catch (err) {
         logger.error({ err }, 'Error in whale detector block interval');
       }
-    }, 2000); // Poll every 2s
+    }, 15000); // Poll every 15s � rate limit friendly
   }
 
   private async scanBlock(blockNumber: number) {
@@ -61,11 +61,17 @@ export class WhaleDetector {
     if (!block) return;
     metrics.blocks_scanned_total.inc();
 
-    // In a production environment with high tx volume, we'd use logs/events.
-    // For this prompt, we scan txs to known Polymarket contracts as requested.
-    const txs = await Promise.all(
-      block.transactions.map((txHash: string) => polygonClient.getTransaction(txHash))
-    );
+    // Sequential with delay to respect Alchemy free tier rate limits
+    const txs: any[] = [];
+    for (const txHash of block.transactions.slice(0, 20)) {
+      try {
+        const tx = await polygonClient.getTransaction(txHash);
+        if (tx) txs.push(tx);
+        await new Promise(r => setTimeout(r, 100)); // 100ms between calls
+      } catch (e) {
+        logger.warn({ txHash }, 'Skipped tx fetch due to rate limit');
+      }
+    }
 
     const whaleTxs = this.filterWhaleTransactions(txs.filter(Boolean) as any[]);
     

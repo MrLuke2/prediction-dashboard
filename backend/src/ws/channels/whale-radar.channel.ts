@@ -5,7 +5,7 @@ import { registry } from '../clientState.js';
 import { MessageType, buildServerMessage, WhaleAlertPayload } from '../protocol.js';
 import { logger } from '../../lib/logger.js';
 
-const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
+const subClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null, enableReadyCheck: false });
 
 export async function initWhaleRadarChannel(): Promise<void> {
   await subClient.subscribe('whale:movements');
