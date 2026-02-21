@@ -28,6 +28,14 @@ export class WhaleDetector {
   private lastProcessedBlock: number = 0;
   private isRunning: boolean = false;
 
+  async getLatestBlockNumber(): Promise<number> {
+    return polygonClient.getBlockNumber();
+  }
+
+  async processBlock(blockNumber: number): Promise<void> {
+    await this.scanBlock(blockNumber);
+  }  
+
   async start() {
     if (this.isRunning) return;
     this.isRunning = true;
