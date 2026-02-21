@@ -18,8 +18,10 @@ import authRoutes from './routes/auth/index.js';
 import apiKeyRoutes from './routes/user/api-keys.js';
 import aiUsageRoutes from './routes/ai/index.js';
 import marketRoutes from './routes/markets/index.js';
+import agentRoutes from './routes/agents/index.js';
 import wsRoutes from './ws/index.js';
 import { initMarketSync } from './jobs/market-sync.job.js';
+import { initAgentOrchestrator } from './jobs/agent-orchestrator.job.js';
 
 const fastify = Fastify({
   logger: logger as unknown as FastifyBaseLogger,
@@ -122,6 +124,7 @@ const start = async () => {
     await fastify.register(apiKeyRoutes, { prefix: '/user/api-keys' });
     await fastify.register(aiUsageRoutes, { prefix: '/ai' });
     await fastify.register(marketRoutes, { prefix: '/markets' });
+    await fastify.register(agentRoutes, { prefix: '/agents' });
     await fastify.register(wsRoutes);
 
     // 8. Start Server
@@ -129,6 +132,7 @@ const start = async () => {
 
     // 9. Start Background Jobs
     await initMarketSync();
+    await initAgentOrchestrator();
 
     console.log(`🚀 Server ready at http://0.0.0.0:${config.PORT}`);
     console.log(`📖 Documentation at http://0.0.0.0:${config.PORT}/docs`);
