@@ -1,4 +1,4 @@
-import { db, client } from './index.js';
+import { db } from './index.js';
 import { 
   users, 
   marketPairs, 
@@ -7,145 +7,171 @@ import {
   whaleMovements, 
   agentLogs, 
   alphaMetrics,
-  userPlanEnum,
-  tradeSideEnum,
-  tradeVenueEnum,
-  tradeStatusEnum,
-  agentLogLevelEnum
+  emergencyEvents,
+  aiUsageMetrics
 } from './schema/index.js';
-import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 async function seed() {
   console.log('🌱 Seeding database...');
 
-  // 1. Create a demo user
-  const [demoUser] = await db.insert(users).values({
-    email: 'demo@alfapredict.ai',
-    passwordHash: 'hashed_password_placeholder',
-    plan: 'pro',
-  }).onConflictDoNothing().returning();
+  // 1. Users (3: free, pro, enterprise)
+  const userData = [
+    {
+      email: 'free@alfapredict.ai',
+      passwordHash: 'hashed_password_placeholder',
+      plan: 'free' as const,
+      preferredAiProvider: 'openai' as const,
+      preferredModel: 'gpt-4o-mini',
+      isActive: true,
+    },
+    {
+      email: 'pro@alfapredict.ai',
+      passwordHash: 'hashed_password_placeholder',
+      plan: 'pro' as const,
+      preferredAiProvider: 'anthropic' as const,
+      preferredModel: 'claude-3-5-sonnet-20240620',
+      isActive: true,
+    },
+    {
+      email: 'enterprise@alfapredict.ai',
+      passwordHash: 'hashed_password_placeholder',
+      plan: 'enterprise' as const,
+      preferredAiProvider: 'gemini' as const,
+      preferredModel: 'gemini-1.5-pro',
+      isActive: true,
+    }
+  ];
 
-  const userId = demoUser?.id || (await db.query.users.findFirst({ where: (u, { eq }) => eq(u.email, 'demo@alfapredict.ai') }))?.id;
-
-  if (!userId) {
-    throw new Error('Failed to create or find demo user');
-  }
+  const insertedUsers = await db.insert(users).values(userData).onConflictDoNothing().returning();
+  const allUsers = insertedUsers.length > 0 ? insertedUsers : await db.query.users.findMany();
 
   // 2. Market Pairs (10)
   const marketPairData = [
-    { symbol: 'BTC/USD', polymarketSlug: 'bitcoin-price-end-of-month', kalshiTicker: 'BTC', category: 'Crypto' },
-    { symbol: 'ETH/USD', polymarketSlug: 'ethereum-price-end-of-month', kalshiTicker: 'ETH', category: 'Crypto' },
-    { symbol: 'FED/RATE', polymarketSlug: 'fed-interest-rate-hike', kalshiTicker: 'FED', category: 'Macro' },
-    { symbol: 'CPI/US', polymarketSlug: 'us-cpi-march', kalshiTicker: 'CPI', category: 'Macro' },
-    { symbol: 'SOL/USD', polymarketSlug: 'solana-price-end-of-week', kalshiTicker: 'SOL', category: 'Crypto' },
-    { symbol: 'NVDA/EARN', polymarketSlug: 'nvidia-earnings-beat', kalshiTicker: 'NVDA', category: 'Stocks' },
-    { symbol: 'AAPL/EARN', polymarketSlug: 'apple-earnings-beat', kalshiTicker: 'AAPL', category: 'Stocks' },
-    { symbol: 'OIL/WTI', polymarketSlug: 'oil-price-forecast', kalshiTicker: 'WTI', category: 'Commodities' },
-    { symbol: 'GOLD/USD', polymarketSlug: 'gold-price-end-of-month', kalshiTicker: 'GOLD', category: 'Commodities' },
-    { symbol: 'TSLA/EARN', polymarketSlug: 'tesla-earnings-beat', kalshiTicker: 'TSLA', category: 'Stocks' },
+    { symbol: 'BTC/USD', polymarketSlug: 'bitcoin-price-june', kalshiTicker: 'BTC', category: 'Crypto' },
+    { symbol: 'ETH/USD', polymarketSlug: 'ethereum-price-june', kalshiTicker: 'ETH', category: 'Crypto' },
+    { symbol: 'GOP-NOM/2024', polymarketSlug: 'republican-nominee-2024', kalshiTicker: 'GOP-NOM', category: 'Politics' },
+    { symbol: 'DEM-NOM/2024', polymarketSlug: 'democratic-nominee-2024', kalshiTicker: 'DEM-NOM', category: 'Politics' },
+    { symbol: 'NBA-FINALS/2024', polymarketSlug: 'nba-finals-winner', kalshiTicker: 'NBA-FINALS', category: 'Sports' },
+    { symbol: 'SUPER-BOWL/2025', polymarketSlug: 'super-bowl-winner-2025', kalshiTicker: 'SB-LIX', category: 'Sports' },
+    { symbol: 'SOL/USD', polymarketSlug: 'solana-price-june', kalshiTicker: 'SOL', category: 'Crypto' },
+    { symbol: 'FED-HIKE/MAR', polymarketSlug: 'fed-hike-march', kalshiTicker: 'FED-2024', category: 'Macro' },
+    { symbol: 'UK-ELEC/2024', polymarketSlug: 'uk-election-winner', kalshiTicker: 'UK-ELEC', category: 'Politics' },
+    { symbol: 'UFC-300/MAIN', polymarketSlug: 'ufc-300-winner', kalshiTicker: 'UFC-300', category: 'Sports' },
   ];
 
   const insertedMarketPairs = await db.insert(marketPairs).values(marketPairData).onConflictDoNothing().returning();
-  
-  // If returning is empty (due to conflict), fetch them
   const allMarketPairs = insertedMarketPairs.length > 0 ? insertedMarketPairs : await db.query.marketPairs.findMany();
 
-  // 3. Price Snapshots (100)
+  // 3. Price Snapshots (200, last 24h)
   const priceSnapshotData = [];
-  for (let i = 0; i < 100; i++) {
+  const now = new Date();
+  for (let i = 0; i < 200; i++) {
     const pair = allMarketPairs[i % allMarketPairs.length];
-    const polyPrice = (Math.random() * 0.9 + 0.05).toString();
-    const kalshiPrice = (parseFloat(polyPrice) + (Math.random() - 0.5) * 0.02).toString();
+    const basePrice = Math.random() * 0.9 + 0.05;
+    const spread = Math.random() * 0.01;
     priceSnapshotData.push({
       marketPairId: pair.id,
-      polymarketPrice: polyPrice,
-      kalshiPrice: kalshiPrice,
-      spread: (parseFloat(polyPrice) - parseFloat(kalshiPrice)).toString(),
-      volume24h: (Math.random() * 1000000 + 50000).toString(),
-      capturedAt: new Date(Date.now() - i * 1000 * 60 * 60), // Hourly snapshots
+      polymarketPrice: basePrice.toFixed(4),
+      kalshiPrice: (basePrice - spread).toFixed(4),
+      spread: spread.toFixed(4),
+      volume24h: (Math.random() * 10000000).toFixed(2),
+      capturedAt: new Date(now.getTime() - (i * 7 * 60 * 1000)), // Every 7 minutes
     });
   }
   await db.insert(priceSnapshots).values(priceSnapshotData);
 
-  // 4. Whale Movements (20)
+  // 4. Whale Movements (30)
   const whaleMovementData = [];
-  for (let i = 0; i < 20; i++) {
+  const providers = ['anthropic', 'openai', 'gemini'] as const;
+  for (let i = 0; i < 30; i++) {
     whaleMovementData.push({
       walletAddress: `0x${randomUUID().replace(/-/g, '').slice(0, 40)}`,
+      marketPairId: allMarketPairs[Math.floor(Math.random() * allMarketPairs.length)].id,
+      amountUsd: (Math.random() * 500000 + 50000).toFixed(2),
+      direction: Math.random() > 0.5 ? 'in' as const : 'out' as const,
+      venue: Math.random() > 0.5 ? 'polymarket' as const : 'kalshi' as const,
       txHash: `0x${randomUUID().replace(/-/g, '')}`,
-      blockNumber: 12345678,
-      amount: "1000000000",
-      amountUsd: Math.random() * 500000 + 100000,
-      direction: (Math.random() > 0.5 ? 'buy' : 'sell'),
-      marketAddress: `0x${randomUUID().replace(/-/g, '').slice(0, 40)}`,
-      marketName: 'Polymarket',
-      level: 'info',
-      timestamp: new Date(Date.now() - i * 1000 * 60 * 120),
+      detectedAt: new Date(now.getTime() - i * 3600000),
+      flaggedByProvider: providers[Math.floor(Math.random() * providers.length)],
+      label: `Smart Money #${i + 1}`,
+      isKnownWhale: Math.random() > 0.8,
     });
   }
   await db.insert(whaleMovements).values(whaleMovementData);
 
   // 5. Agent Logs (50)
-  const agents = ['ORCHESTRATOR', 'MARKET_ANALYZER', 'WHALE_WATCHER', 'RISK_MANAGER', 'EXECUTION_ENGINE'];
   const agentLogData = [];
+  const agentNames = ['Fundamentalist', 'Sentiment', 'Risk', 'Orchestrator'];
+  const levels = ['info', 'warn', 'alert'] as const;
   for (let i = 0; i < 50; i++) {
-    const pair = Math.random() > 0.3 ? allMarketPairs[Math.floor(Math.random() * allMarketPairs.length)] : null;
     agentLogData.push({
-      agentName: agents[Math.floor(Math.random() * agents.length)],
-      level: 'info' as 'info' | 'warn' | 'alert',
-      message: `Simulated log message ${i} for active monitoring.`,
-      metadata: { iteration: i, timestamp: new Date().toISOString() },
-      marketPairId: pair?.id || null,
-      createdAt: new Date(Date.now() - i * 1000 * 60 * 15),
+      agentName: agentNames[Math.floor(Math.random() * agentNames.length)],
+      level: levels[Math.floor(Math.random() * levels.length)],
+      message: `System analysis report ${i}`,
+      metadata: { check_id: randomUUID() },
+      marketPairId: Math.random() > 0.3 ? allMarketPairs[Math.floor(Math.random() * allMarketPairs.length)].id : null,
+      provider: providers[Math.floor(Math.random() * providers.length)],
+      model: 'claude-3-opus',
+      latencyMs: Math.floor(Math.random() * 2000 + 500),
+      tokensUsed: Math.floor(Math.random() * 1000 + 100),
+      createdAt: new Date(now.getTime() - i * 1800000),
     });
   }
   await db.insert(agentLogs).values(agentLogData);
 
-  // 6. Trades (5)
-  const tradeData = [];
-  for (let i = 0; i < 5; i++) {
-    const pair = allMarketPairs[Math.floor(Math.random() * allMarketPairs.length)];
-    const entryPrice = (Math.random() * 0.8 + 0.1).toString();
-    const isClosed = Math.random() > 0.3;
-    const side: 'buy' | 'sell' = Math.random() > 0.5 ? 'buy' : 'sell';
-    
-    tradeData.push({
-      userId: userId!,
-      marketPairId: pair.id,
-      side: side,
-      venue: (Math.random() > 0.5 ? 'polymarket' : 'kalshi') as 'polymarket' | 'kalshi',
-      size: (Math.random() * 1000 + 100).toString(),
-      entryPrice: entryPrice,
-      exitPrice: isClosed ? (parseFloat(entryPrice) * (1 + (Math.random() - 0.4) * 0.1)).toString() : null,
-      pnl: isClosed ? ((Math.random() - 0.4) * 500).toString() : null,
-      status: (isClosed ? 'closed' : 'open') as 'closed' | 'open',
-      txHash: `0x${randomUUID().replace(/-/g, '')}`,
-      openedAt: new Date(Date.now() - i * 1000 * 60 * 60 * 24),
-      closedAt: isClosed ? new Date(Date.now() - i * 1000 * 60 * 60 * 2) : null,
-    });
-  }
-  await db.insert(trades).values(tradeData);
-
-  // 7. Alpha Metrics (Historical)
+  // 6. Alpha Metrics (5)
   const alphaMetricData = [];
-  for (let i = 0; i < 24; i++) {
+  const regimes = ['low', 'medium', 'high', 'critical'] as const;
+  for (let i = 0; i < 5; i++) {
     alphaMetricData.push({
       confidence: (Math.random() * 40 + 50).toFixed(2),
-      regime: Math.random() > 0.7 ? 'High Volatility' : 'Mean Reversion',
-      contributingAgents: { 
-        MA: Math.random().toFixed(2), 
-        WW: Math.random().toFixed(2), 
-        ORCH: Math.random().toFixed(2) 
+      regime: regimes[Math.floor(Math.random() * regimes.length)],
+      contributingAgents: {
+        fundamentalist: { score: 0.85, provider: 'anthropic', model: 'claude-3-sonnet' },
+        sentiment: { score: 0.72, provider: 'openai', model: 'gpt-4o' },
+        risk: { score: 0.91, provider: 'openai', model: 'gpt-4o-mini' }
       },
-      topOpportunity: { 
-        symbol: allMarketPairs[Math.floor(Math.random() * allMarketPairs.length)].symbol,
-        expectedReturn: (Math.random() * 15).toFixed(2) 
-      },
-      createdAt: new Date(Date.now() - i * 1000 * 60 * 60),
+      topOpportunity: { symbol: 'BTC/USD', expectedReturn: '12.5%' },
+      generatedByProvider: providers[i % providers.length],
+      createdAt: new Date(now.getTime() - i * 3600000 * 4),
     });
   }
   await db.insert(alphaMetrics).values(alphaMetricData);
+
+  // 7. Emergency Events (2, resolved)
+  const emergencyEventData = [];
+  for (let i = 0; i < 2; i++) {
+    emergencyEventData.push({
+      userId: allUsers[i % allUsers.length].id,
+      triggeredAt: new Date(now.getTime() - (i + 1) * 86400000),
+      triggerReason: `High localized volatility in ${allMarketPairs[i].symbol}`,
+      tradesClosed: Math.floor(Math.random() * 10 + 5),
+      totalPnlImpact: (Math.random() * -1000).toFixed(6),
+      resolvedAt: new Date(now.getTime() - (i + 1) * 80000000),
+      metadata: { auto_fix: true }
+    });
+  }
+  await db.insert(emergencyEvents).values(emergencyEventData);
+
+  // 8. AI Usage Metrics (100)
+  const aiUsageData = [];
+  for (let i = 0; i < 100; i++) {
+    aiUsageData.push({
+      provider: providers[Math.floor(Math.random() * providers.length)],
+      model: 'model-x',
+      userId: Math.random() > 0.2 ? allUsers[Math.floor(Math.random() * allUsers.length)].id : null,
+      agentName: agentNames[Math.floor(Math.random() * agentNames.length)],
+      tokensInput: Math.floor(Math.random() * 5000),
+      tokensOutput: Math.floor(Math.random() * 2000),
+      latencyMs: Math.floor(Math.random() * 3000),
+      costUsd: (Math.random() * 0.05).toFixed(6),
+      success: Math.random() > 0.05,
+      errorCode: Math.random() > 0.95 ? 'RATE_LIMIT' : null,
+      createdAt: new Date(now.getTime() - i * 900000),
+    });
+  }
+  await db.insert(aiUsageMetrics).values(aiUsageData);
 
   console.log('✅ Seeding complete!');
   process.exit(0);

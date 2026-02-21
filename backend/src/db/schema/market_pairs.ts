@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const marketPairs = pgTable('market_pairs', {
@@ -9,17 +9,9 @@ export const marketPairs = pgTable('market_pairs', {
   category: varchar('category', { length: 100 }),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  lastPriceAt: timestamp('last_price_at', { withTimezone: true }),
+  metadata: jsonb('metadata').default({}).notNull(),
 });
 
 export type MarketPair = InferSelectModel<typeof marketPairs>;
 export type NewMarketPair = InferInsertModel<typeof marketPairs>;
-
-import { relations } from 'drizzle-orm';
-import { trades } from './trades.js';
-import { priceSnapshots } from './price_snapshots.js';
-
-export const marketPairsRelations = relations(marketPairs, ({ many }) => ({
-  trades: many(trades),
-  priceSnapshots: many(priceSnapshots),
-}));
-

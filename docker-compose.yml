@@ -42,6 +42,10 @@ services:
       REDIS_URL: redis://redis:6379
       PORT: 3001
       JWT_SECRET: super_secret_production_key_placeholder_min_32_chars
+      POLYMARKET_API_KEY: ${POLYMARKET_API_KEY:-}
+      KALSHI_API_KEY: ${KALSHI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      POLYGON_RPC_URL: ${POLYGON_RPC_URL:-http://polygon-rpc.com}
     ports:
       - "3001:3001"
     depends_on:
